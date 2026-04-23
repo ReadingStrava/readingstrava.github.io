@@ -91,7 +91,7 @@
             <p class="section-kicker">Quick log</p>
             <h2>Record a reading session</h2>
           </div>
-          <p class="section-copy">Save a session locally so the app feels personal right away.</p>
+          <p class="section-copy">Enter your page range, let the app calculate the session, then open a story-ready poster.</p>
         </div>
         <form id="sessionForm" class="session-form">
           <label>
@@ -103,12 +103,16 @@
             <input type="text" name="author" placeholder="Richard Powers" required>
           </label>
           <label>
-            <span>Pages</span>
-            <input type="number" name="pages" min="1" placeholder="24" required>
+            <span>Start page</span>
+            <input type="number" name="startPage" min="1" inputmode="numeric" placeholder="112" required>
+          </label>
+          <label>
+            <span>End page</span>
+            <input type="number" name="endPage" min="1" inputmode="numeric" placeholder="148" required>
           </label>
           <label>
             <span>Minutes</span>
-            <input type="number" name="minutes" min="1" placeholder="35" required>
+            <input type="number" name="minutes" min="1" inputmode="numeric" placeholder="45" required>
           </label>
           <label>
             <span>Date</span>
@@ -123,11 +127,14 @@
               <option value="Recovery read">Recovery read</option>
             </select>
           </label>
+          <div id="sessionSummary" class="session-summary session-form__wide" aria-live="polite">
+            Enter a page range to see pages read and pace before you save.
+          </div>
           <label class="session-form__wide">
             <span>Notes</span>
             <textarea name="notes" rows="4" placeholder="What made this session memorable?"></textarea>
           </label>
-          <button class="button button--solid session-form__submit" type="submit">Log session</button>
+          <button class="button button--solid session-form__submit" type="submit">Log Session and Open Story</button>
         </form>
       </section>
 
@@ -176,6 +183,29 @@
       </section>
     </div>
   </main>
+  <section id="storyModal" class="story-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="storyModalTitle">
+    <div class="story-modal__backdrop" data-close-story></div>
+    <div class="story-modal__sheet">
+      <div class="story-modal__header">
+        <button class="story-modal__close" type="button" data-close-story>Close</button>
+        <h2 id="storyModalTitle">Share Activity</h2>
+        <div class="story-modal__spacer" aria-hidden="true"></div>
+      </div>
+      <div class="story-modal__body">
+        <div class="story-preview">
+          <canvas id="storyCanvas" class="story-canvas" width="1080" height="1920" aria-label="Reading story preview"></canvas>
+        </div>
+        <div class="story-copy">
+          <p id="storyDetails" class="story-details">Create a poster you can save or share from your phone.</p>
+          <p id="storyStatus" class="story-status">Use Share Story to open your phone's share sheet. If Instagram Story does not appear, save the image and add it from your gallery.</p>
+        </div>
+        <div class="story-actions">
+          <button id="shareStoryButton" class="button button--solid" type="button">Share Story</button>
+          <button id="saveStoryButton" class="button button--ghost" type="button">Save Image</button>
+        </div>
+      </div>
+    </div>
+  </section>
   <noscript>
     <p class="noscript-banner">Reading Strava works best with JavaScript enabled because sessions and stats are calculated in your browser.</p>
   </noscript>
