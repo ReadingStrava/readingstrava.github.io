@@ -1,4 +1,4 @@
-const CACHE_NAME = "reading-strava-v8";
+const CACHE_NAME = "reading-strava-v9";
 const APP_ASSETS = [
   "./",
   "./?mode=recorder",

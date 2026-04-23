@@ -358,30 +358,8 @@ section[hidden] {
   fill: none;
 }
 
-.share-tip {
-  display: grid;
-  gap: 0.28rem;
-  justify-items: center;
-}
-
-.share-tip__title {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.66);
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
 .screen__content--result .button {
   min-height: 4.2rem;
-}
-
-.screen__content--result .screen__subtext {
-  max-width: 20rem;
-  font-size: 0.88rem;
-}
-
-.screen__content--result .screen__status {
-  min-height: 0;
 }
 
 

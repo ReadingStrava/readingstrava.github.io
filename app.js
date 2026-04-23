@@ -33,10 +33,8 @@ const resultPages = document.getElementById("resultPages");
 const resultPace = document.getElementById("resultPace");
 const resultTime = document.getElementById("resultTime");
 const resultBookMark = document.getElementById("resultBookMark");
-const shareHelp = document.getElementById("shareHelp");
 const copyImageButton = document.getElementById("copyImageButton");
 const newSessionButton = document.getElementById("newSessionButton");
-const resultStatus = document.getElementById("resultStatus");
 const storyCanvas = document.getElementById("storyCanvas");
 
 const BOOK_MARK_PATHS = [
@@ -63,8 +61,7 @@ let resultFeedbackResetId = null;
 
 const screenStatus = {
   setup: { text: "", error: false },
-  save: { text: "", error: false },
-  result: { text: "", error: false }
+  save: { text: "", error: false }
 };
 
 initialize();
@@ -317,7 +314,6 @@ async function handleResultPrimaryAction() {
   }
 
   copyImageButton.disabled = true;
-  clearStatus("result");
 
   try {
     const blob = await buildStoryBlob(state.result);
@@ -355,11 +351,8 @@ async function handleResultPrimaryAction() {
 
     downloadBlob(blob, fileName);
     flashPrimaryButtonLabel("Saved");
-  } catch (error) {
-    setStatus("result", "Couldn't create image.", true);
   } finally {
     copyImageButton.disabled = false;
-    renderStatus("result");
   }
 }
 
@@ -392,14 +385,12 @@ function renderScreen() {
     resultPages.textContent = `${state.result.pages}`;
     resultPace.textContent = formatClock(state.result.paceSeconds);
     resultTime.textContent = formatClock(state.result.durationSeconds);
-    shareHelp.textContent = getShareHelpText();
     syncPrimaryButtonLabel();
     void renderStoryCard(state.result);
   } else {
     resultPages.textContent = "0";
     resultPace.textContent = "00:00";
     resultTime.textContent = "00:00";
-    shareHelp.textContent = "Save image -> Open Instagram Story -> Add from gallery";
     syncPrimaryButtonLabel();
   }
 }
@@ -431,15 +422,10 @@ function ensureTicker() {
 function renderStatuses() {
   renderStatus("setup");
   renderStatus("save");
-  renderStatus("result");
 }
 
 function renderStatus(screenName) {
-  const target = screenName === "setup"
-    ? setupStatus
-    : screenName === "save"
-      ? saveStatus
-      : resultStatus;
+  const target = screenName === "setup" ? setupStatus : saveStatus;
 
   const entry = screenStatus[screenName];
   target.textContent = entry.text;
@@ -458,7 +444,6 @@ function clearStatus(screenName) {
 function clearAllStatuses() {
   clearStatus("setup");
   clearStatus("save");
-  clearStatus("result");
 }
 
 function buildResult(startPage, endPage, durationSeconds) {
@@ -620,20 +605,6 @@ function getPrimaryActionLabel() {
   }
 
   return "Save Image";
-}
-
-function getShareHelpText() {
-  const action = getPrimaryShareAction();
-
-  if (action === "share") {
-    return "If Instagram Story is missing, save image -> Add from gallery";
-  }
-
-  if (action === "copy") {
-    return "Save image -> Open Instagram Story -> Add from gallery";
-  }
-
-  return "Save image -> Open Instagram Story -> Add from gallery";
 }
 
 async function renderStoryCard(result) {
