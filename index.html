@@ -3,283 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f36c3d">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Reading Strava">
-  <meta name="description" content="Track reading sessions, streaks, and goals in a Strava-inspired web app for book lovers.">
+  <meta name="description" content="A simple reading recorder with a story-ready share card.">
   <title>Reading Strava</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
   <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="ambient-glow ambient-glow--left"></div>
-  <div class="ambient-glow ambient-glow--right"></div>
-  <main id="dashboardApp" class="app-shell">
-    <section class="hero panel">
-      <div class="hero-copy">
-        <p class="eyebrow">Book miles, chapter climbs, daily streaks</p>
-        <h1 class="hero-title">Reading Strava</h1>
-        <p class="hero-lead">
-          A phone-ready reading tracker that turns every session into momentum.
-          Log pages, watch your pace, keep the streak alive, and chase monthly reading goals.
-        </p>
-        <div class="hero-actions">
-          <button id="installButton" class="button button--solid" type="button">Add to Home Screen</button>
-          <button id="openRecorderButton" class="button button--ghost" type="button">Open Recorder</button>
-          <p id="installStatus" class="install-status" aria-live="polite">Use this button to install the app or get bookmark instructions for your phone.</p>
-        </div>
+  <main id="landingApp" class="landing-app">
+    <section class="landing-shell">
+      <p class="landing-shell__eyebrow">Reading Strava</p>
+      <h1 class="landing-shell__title">Reading Tracker</h1>
+      <p class="landing-shell__copy">A simple timer for reading sessions.</p>
+      <div class="landing-shell__actions">
+        <button id="installButton" class="button button--primary" type="button">Install App</button>
+        <button id="openRecorderButton" class="button button--secondary" type="button">Open Recorder</button>
       </div>
-      <div class="hero-orbit" aria-hidden="true">
-        <div class="hero-orbit__ring">
-          <span class="hero-orbit__label">Current streak</span>
-          <strong id="heroStreak">0 days</strong>
-        </div>
-        <div class="hero-orbit__chip hero-orbit__chip--top">
-          <span>This week</span>
-          <strong id="heroWeekPages">0 pages</strong>
-        </div>
-        <div class="hero-orbit__chip hero-orbit__chip--bottom">
-          <span>Pace</span>
-          <strong id="heroPace">0 p/h</strong>
-        </div>
-      </div>
+      <p id="installStatus" class="landing-shell__status" aria-live="polite">Install the app on your phone or open the recorder in this browser.</p>
     </section>
-
-    <section class="stats-grid" aria-label="Reading summary">
-      <article class="stat-card panel">
-        <span class="stat-card__label">Current streak</span>
-        <strong id="streakValue" class="stat-card__value">0</strong>
-        <span class="stat-card__meta">Consecutive reading days</span>
-      </article>
-      <article class="stat-card panel">
-        <span class="stat-card__label">Weekly pages</span>
-        <strong id="pagesValue" class="stat-card__value">0</strong>
-        <span class="stat-card__meta">Pages finished over the last 7 days</span>
-      </article>
-      <article class="stat-card panel">
-        <span class="stat-card__label">Active minutes</span>
-        <strong id="minutesValue" class="stat-card__value">0</strong>
-        <span class="stat-card__meta">Time spent reading this week</span>
-      </article>
-      <article class="stat-card panel">
-        <span class="stat-card__label">Average pace</span>
-        <strong id="paceValue" class="stat-card__value">0</strong>
-        <span class="stat-card__meta">Pages per hour this week</span>
-      </article>
-    </section>
-
-    <div class="content-grid">
-      <section class="panel week-panel">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Training block</p>
-            <h2>Weekly reading shape</h2>
-          </div>
-          <p class="section-copy">A quick view of how your reading load has stacked up over the last seven days.</p>
-        </div>
-        <div id="weekChart" class="week-chart" aria-label="Weekly reading chart"></div>
-      </section>
-
-      <section class="panel form-panel">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Recorder</p>
-            <h2>Use the timer-first flow</h2>
-          </div>
-          <p class="section-copy">The installed app now opens directly into a reading recorder with start, pause, finish, and story share.</p>
-        </div>
-        <div class="focus-panel__content">
-          <p id="focusPanelCopy" class="section-copy">Use Recorder to enter the book, set your starting page, run the timer, update the page you finished on, and open a story poster at the end.</p>
-          <button id="focusRecorderButton" class="button button--solid" type="button">Open Recorder</button>
-        </div>
-      </section>
-
-      <section class="panel feed-panel">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Activity feed</p>
-            <h2>Recent reading sessions</h2>
-          </div>
-          <p class="section-copy">The feed turns each reading block into something shareable and repeatable.</p>
-        </div>
-        <div id="activityFeed" class="activity-feed" aria-live="polite"></div>
-      </section>
-
-      <section class="panel shelf-panel">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Bookshelf</p>
-            <h2>Top books in rotation</h2>
-          </div>
-          <p class="section-copy">The books you keep returning to, sorted by pages read.</p>
-        </div>
-        <div id="shelfGrid" class="shelf-grid"></div>
-      </section>
-
-      <section class="panel challenges-panel">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Challenges</p>
-            <h2>Monthly targets</h2>
-          </div>
-          <p class="section-copy">Goals that borrow the energy of Strava challenges without pretending books are workouts.</p>
-        </div>
-        <div id="challengeGrid" class="challenge-grid"></div>
-      </section>
-
-      <section class="panel leaderboard-panel">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Club board</p>
-            <h2>Friendly leaderboard</h2>
-          </div>
-          <p class="section-copy">Sample reading club standings based on pages logged this month.</p>
-        </div>
-        <ol id="leaderboardList" class="leaderboard-list"></ol>
-      </section>
-    </div>
   </main>
+
   <main id="recorderApp" class="recorder-app" hidden>
-    <section class="recorder-screen">
-      <header class="recorder-header">
-        <button id="exitRecorderButton" class="recorder-header__button" type="button">Back</button>
-        <div class="recorder-header__title">
-          <p class="recorder-header__eyebrow">Reading Strava</p>
-          <h1>Reading Recorder</h1>
-        </div>
-        <div class="recorder-header__status">
-          <span id="recorderModeBadge" class="recorder-badge">Installed</span>
-        </div>
-      </header>
-
-      <section class="recorder-section">
-        <div class="recorder-section__heading">
-          <p class="section-kicker">Book</p>
-          <p id="recorderHint" class="recorder-hint">Enter your book and starting page, then tap Start Session.</p>
-        </div>
-        <div class="recorder-grid">
-          <label class="recorder-field">
-            <span>Book title</span>
-            <input id="recorderTitle" type="text" inputmode="text" placeholder="The Overstory">
-          </label>
-          <label class="recorder-field">
-            <span>Author</span>
-            <input id="recorderAuthor" type="text" inputmode="text" placeholder="Richard Powers">
-          </label>
-          <label class="recorder-field">
-            <span>Start page</span>
-            <input id="recorderStartPage" type="number" min="1" inputmode="numeric" placeholder="112">
-          </label>
-          <label class="recorder-field">
-            <span>Page reached</span>
-            <input id="recorderCurrentPage" type="number" min="1" inputmode="numeric" placeholder="148">
-          </label>
-        </div>
-      </section>
-
-      <section class="recorder-session">
-        <p id="recorderStateLabel" class="recorder-session__label">Ready</p>
-        <div id="recorderElapsed" class="recorder-session__time">00:00:00</div>
-        <div class="recorder-metrics">
-          <article class="recorder-metric">
-            <span>Page(s)</span>
-            <strong id="recorderPages">0</strong>
-          </article>
-          <article class="recorder-metric">
-            <span>Pace</span>
-            <strong id="recorderPace">00:00/p</strong>
-          </article>
-          <article class="recorder-metric">
-            <span>Range</span>
-            <strong id="recorderRange">Set your range</strong>
-          </article>
-        </div>
-      </section>
-
-      <section class="recorder-section recorder-section--secondary">
-        <div class="recorder-grid">
-          <label class="recorder-field">
-            <span>Mood</span>
-            <select id="recorderMood">
-              <option value="Locked in">Locked in</option>
-              <option value="Steady">Steady</option>
-              <option value="Reflective">Reflective</option>
-              <option value="Recovery read">Recovery read</option>
-            </select>
-          </label>
-          <label class="recorder-field recorder-field--wide">
-            <span>Notes</span>
-            <textarea id="recorderNotes" rows="4" placeholder="What happened in this session?"></textarea>
-          </label>
-        </div>
-      </section>
-
-      <footer class="recorder-footer">
-        <p id="recorderSummary" class="recorder-summary" aria-live="polite">No active session.</p>
-        <div class="recorder-actions">
-          <button id="startSessionButton" class="button button--solid" type="button">Start Session</button>
-          <button id="pauseSessionButton" class="button button--ghost" type="button">Pause</button>
-          <button id="finishSessionButton" class="button button--solid" type="button">Finish and Share</button>
-          <button id="resetSessionButton" class="button button--ghost" type="button">Reset</button>
-        </div>
-      </footer>
+    <section class="screen" data-screen="setup">
+      <div class="screen__content">
+        <p class="screen__eyebrow">Reading Tracker</p>
+        <h1 class="screen__title">Track your reading sessions</h1>
+        <label class="field">
+          <span class="field__label">Starting Page</span>
+          <input id="startPageInput" class="field__input field__input--large" type="number" min="1" inputmode="numeric" placeholder="0">
+        </label>
+        <button id="startButton" class="button button--primary" type="button">Start Reading</button>
+        <button id="backButton" class="link-button" type="button">Back</button>
+        <p id="setupStatus" class="screen__status" aria-live="polite"></p>
+      </div>
     </section>
-  </main>
-  <main id="shareApp" class="share-app" hidden>
-    <section class="share-screen" aria-labelledby="shareTitle">
-      <div class="share-screen__spacer" aria-hidden="true"></div>
-      <div class="share-screen__stats">
-        <article class="share-stat">
-          <p class="share-stat__label">PAGE(S)</p>
-          <strong id="sharePagesValue" class="share-stat__value share-stat__value--pages">0</strong>
+
+    <section class="screen" data-screen="running" hidden>
+      <div class="screen__content screen__content--timer">
+        <p class="timer-state">Reading</p>
+        <div id="runningTimerValue" class="timer-value">00:00</div>
+        <button id="pauseButton" class="pause-button" type="button" aria-label="Pause reading">
+          <span class="pause-button__bars" aria-hidden="true"></span>
+        </button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="paused" hidden>
+      <div class="screen__content screen__content--paused">
+        <p class="timer-state timer-state--accent">Paused</p>
+        <div id="pausedTimerValue" class="timer-value">00:00</div>
+        <div class="stack-actions">
+          <button id="continueButton" class="button button--primary" type="button">Continue</button>
+          <button id="saveButton" class="button button--secondary" type="button">Save</button>
+        </div>
+        <button id="discardButton" class="link-button" type="button">Discard</button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="save" hidden>
+      <div class="screen__content">
+        <h1 class="screen__title">Where did you stop?</h1>
+        <p id="saveHint" class="screen__subtext">Started on page 0</p>
+        <label class="field">
+          <span class="field__label">Ending Page</span>
+          <input id="endPageInput" class="field__input field__input--large field__input--outline" type="number" min="1" inputmode="numeric" placeholder="0">
+        </label>
+        <button id="saveSessionButton" class="button button--primary" type="button">Save Session</button>
+        <button id="saveBackButton" class="link-button" type="button">Back</button>
+        <p id="saveStatus" class="screen__status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="result" hidden>
+      <div class="screen__content screen__content--result">
+        <article class="result-stat">
+          <p class="result-stat__label">Page(s)</p>
+          <strong id="resultPages" class="result-stat__value result-stat__value--pages">0</strong>
         </article>
-        <article class="share-stat">
-          <p class="share-stat__label">PACE</p>
-          <div class="share-stat__row">
-            <strong id="sharePaceValue" class="share-stat__value share-stat__value--pace">00:00</strong>
-            <span class="share-stat__suffix">/p</span>
+        <article class="result-stat">
+          <p class="result-stat__label">Pace</p>
+          <div class="result-stat__row">
+            <strong id="resultPace" class="result-stat__value result-stat__value--pace">00:00</strong>
+            <span class="result-stat__suffix">/p</span>
           </div>
         </article>
-        <article class="share-stat">
-          <p class="share-stat__label">TIME</p>
-          <strong id="shareTimeValue" class="share-stat__value share-stat__value--time">00:00</strong>
+        <article class="result-stat">
+          <p class="result-stat__label">Time</p>
+          <strong id="resultTime" class="result-stat__value result-stat__value--time">00:00</strong>
         </article>
+        <div class="result-icon" aria-hidden="true">
+          <svg class="result-icon__book" viewBox="0 0 208 168" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M40 57C31 41 22 28 8 30L12 115C39 107 72 112 102 126C99 113 92 97 83 84" />
+            <path d="M168 57C177 41 186 28 200 30L196 115C169 107 136 112 106 126C109 113 116 97 125 84" />
+            <path d="M96 126C103 147 105 147 112 126" />
+            <path d="M20 38L58 101" />
+            <path d="M188 38L150 101" />
+            <path d="M35 132C55 116 75 113 95 123" />
+            <path d="M173 132C153 116 133 113 113 123" />
+          </svg>
+        </div>
+        <p id="shareHelp" class="screen__subtext">Save image -> Open Instagram Story -> Add from gallery</p>
+        <button id="copyImageButton" class="button button--primary" type="button">Copy Image</button>
+        <button id="newSessionButton" class="link-button" type="button">New Session</button>
+        <p id="resultStatus" class="screen__status" aria-live="polite"></p>
       </div>
-
-      <div class="share-screen__icon" aria-hidden="true">
-        <svg class="share-bookmark" viewBox="0 0 208 168" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M40 57C31 41 22 28 8 30L12 115C39 107 72 112 102 126C99 113 92 97 83 84" />
-          <path d="M168 57C177 41 186 28 200 30L196 115C169 107 136 112 106 126C109 113 116 97 125 84" />
-          <path d="M96 126C103 147 105 147 112 126" />
-          <path d="M20 38L58 101" />
-          <path d="M188 38L150 101" />
-          <path d="M35 132C55 116 75 113 95 123" />
-          <path d="M173 132C153 116 133 113 113 123" />
-        </svg>
-      </div>
-
-      <div class="share-screen__help">
-        <p id="shareTitle" class="share-screen__help-title">How to share</p>
-        <p id="shareHowTo" class="share-screen__help-copy">Save image -> Open Instagram Story -> Add from gallery</p>
-        <p id="shareStatus" class="share-screen__status">Preparing your reading card.</p>
-      </div>
-
-      <div class="share-screen__actions">
-        <button id="sharePrimaryButton" class="button share-screen__primary" type="button">Copy Image</button>
-        <button id="shareSecondaryButton" class="share-screen__secondary" type="button">New Session</button>
-      </div>
-
-      <canvas id="storyCanvas" class="story-canvas story-canvas--hidden" width="1080" height="1920" aria-hidden="true"></canvas>
+      <canvas id="storyCanvas" class="story-canvas" width="1080" height="1920" aria-hidden="true"></canvas>
     </section>
   </main>
+
   <noscript>
-    <p class="noscript-banner">Reading Strava works best with JavaScript enabled because sessions and stats are calculated in your browser.</p>
+    <p class="noscript-banner">Reading Strava works best with JavaScript enabled.</p>
   </noscript>
   <script src="app.js"></script>
 </body>

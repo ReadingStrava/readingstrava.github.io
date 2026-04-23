@@ -1,12 +1,12 @@
 {
   "name": "Reading Strava",
   "short_name": "ReadStrava",
-  "description": "A Strava-like progressive web app for logging reading sessions, streaks, and book goals.",
-  "start_url": "./",
+  "description": "A simple reading recorder with a story-ready share card.",
+  "start_url": "./?mode=recorder",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5ecdd",
-  "theme_color": "#f36c3d",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "categories": [
     "books",
