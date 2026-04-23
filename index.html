@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f36c3d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Reading Strava">
+  <meta name="description" content="Track reading sessions, streaks, and goals in a Strava-inspired web app for book lovers.">
+  <title>Reading Strava</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient-glow ambient-glow--left"></div>
+  <div class="ambient-glow ambient-glow--right"></div>
+  <main class="app-shell">
+    <section class="hero panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Book miles, chapter climbs, daily streaks</p>
+        <h1 class="hero-title">Reading Strava</h1>
+        <p class="hero-lead">
+          A phone-ready reading tracker that turns every session into momentum.
+          Log pages, watch your pace, keep the streak alive, and chase monthly reading goals.
+        </p>
+        <div class="hero-actions">
+          <button id="installButton" class="button button--solid" type="button">Add to Home Screen</button>
+          <p id="installStatus" class="install-status" aria-live="polite">Use this button to install the app or get bookmark instructions for your phone.</p>
+        </div>
+      </div>
+      <div class="hero-orbit" aria-hidden="true">
+        <div class="hero-orbit__ring">
+          <span class="hero-orbit__label">Current streak</span>
+          <strong id="heroStreak">0 days</strong>
+        </div>
+        <div class="hero-orbit__chip hero-orbit__chip--top">
+          <span>This week</span>
+          <strong id="heroWeekPages">0 pages</strong>
+        </div>
+        <div class="hero-orbit__chip hero-orbit__chip--bottom">
+          <span>Pace</span>
+          <strong id="heroPace">0 p/h</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-grid" aria-label="Reading summary">
+      <article class="stat-card panel">
+        <span class="stat-card__label">Current streak</span>
+        <strong id="streakValue" class="stat-card__value">0</strong>
+        <span class="stat-card__meta">Consecutive reading days</span>
+      </article>
+      <article class="stat-card panel">
+        <span class="stat-card__label">Weekly pages</span>
+        <strong id="pagesValue" class="stat-card__value">0</strong>
+        <span class="stat-card__meta">Pages finished over the last 7 days</span>
+      </article>
+      <article class="stat-card panel">
+        <span class="stat-card__label">Active minutes</span>
+        <strong id="minutesValue" class="stat-card__value">0</strong>
+        <span class="stat-card__meta">Time spent reading this week</span>
+      </article>
+      <article class="stat-card panel">
+        <span class="stat-card__label">Average pace</span>
+        <strong id="paceValue" class="stat-card__value">0</strong>
+        <span class="stat-card__meta">Pages per hour this week</span>
+      </article>
+    </section>
+
+    <div class="content-grid">
+      <section class="panel week-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Training block</p>
+            <h2>Weekly reading shape</h2>
+          </div>
+          <p class="section-copy">A quick view of how your reading load has stacked up over the last seven days.</p>
+        </div>
+        <div id="weekChart" class="week-chart" aria-label="Weekly reading chart"></div>
+      </section>
+
+      <section class="panel form-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Quick log</p>
+            <h2>Record a reading session</h2>
+          </div>
+          <p class="section-copy">Save a session locally so the app feels personal right away.</p>
+        </div>
+        <form id="sessionForm" class="session-form">
+          <label>
+            <span>Book title</span>
+            <input type="text" name="title" placeholder="The Overstory" required>
+          </label>
+          <label>
+            <span>Author</span>
+            <input type="text" name="author" placeholder="Richard Powers" required>
+          </label>
+          <label>
+            <span>Pages</span>
+            <input type="number" name="pages" min="1" placeholder="24" required>
+          </label>
+          <label>
+            <span>Minutes</span>
+            <input type="number" name="minutes" min="1" placeholder="35" required>
+          </label>
+          <label>
+            <span>Date</span>
+            <input id="sessionDate" type="date" name="date" required>
+          </label>
+          <label>
+            <span>Mood</span>
+            <select name="mood">
+              <option value="Locked in">Locked in</option>
+              <option value="Steady">Steady</option>
+              <option value="Reflective">Reflective</option>
+              <option value="Recovery read">Recovery read</option>
+            </select>
+          </label>
+          <label class="session-form__wide">
+            <span>Notes</span>
+            <textarea name="notes" rows="4" placeholder="What made this session memorable?"></textarea>
+          </label>
+          <button class="button button--solid session-form__submit" type="submit">Log session</button>
+        </form>
+      </section>
+
+      <section class="panel feed-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Activity feed</p>
+            <h2>Recent reading sessions</h2>
+          </div>
+          <p class="section-copy">The feed turns each reading block into something shareable and repeatable.</p>
+        </div>
+        <div id="activityFeed" class="activity-feed" aria-live="polite"></div>
+      </section>
+
+      <section class="panel shelf-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Bookshelf</p>
+            <h2>Top books in rotation</h2>
+          </div>
+          <p class="section-copy">The books you keep returning to, sorted by pages read.</p>
+        </div>
+        <div id="shelfGrid" class="shelf-grid"></div>
+      </section>
+
+      <section class="panel challenges-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Challenges</p>
+            <h2>Monthly targets</h2>
+          </div>
+          <p class="section-copy">Goals that borrow the energy of Strava challenges without pretending books are workouts.</p>
+        </div>
+        <div id="challengeGrid" class="challenge-grid"></div>
+      </section>
+
+      <section class="panel leaderboard-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Club board</p>
+            <h2>Friendly leaderboard</h2>
+          </div>
+          <p class="section-copy">Sample reading club standings based on pages logged this month.</p>
+        </div>
+        <ol id="leaderboardList" class="leaderboard-list"></ol>
+      </section>
+    </div>
+  </main>
+  <noscript>
+    <p class="noscript-banner">Reading Strava works best with JavaScript enabled because sessions and stats are calculated in your browser.</p>
+  </noscript>
+  <script src="app.js"></script>
+</body>
+</html>

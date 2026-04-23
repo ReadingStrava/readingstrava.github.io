@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Reading Strava Icon</title>
+  <desc id="desc">A bold app icon with an open book and a reading streak dot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f36c3d" />
+      <stop offset="100%" stop-color="#f7bf5c" />
+    </linearGradient>
+    <linearGradient id="paper" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff8ef" />
+      <stop offset="100%" stop-color="#ffe8cf" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)" />
+  <path d="M88 124c60-26 129-39 206-39 50 0 93 6 130 18v34c-35-7-72-10-111-10-87 0-161 16-225 49z" fill="rgba(255,248,238,0.28)" />
+  <circle cx="384" cy="146" r="42" fill="#18222a" opacity="0.16" />
+  <circle cx="384" cy="146" r="30" fill="#fff8ef" />
+  <path d="M122 180c0-18 15-33 33-33h101c28 0 57 10 82 29 25-19 54-29 82-29h7c18 0 33 15 33 33v162c0 12-10 22-22 22h-18c-24 0-52 8-74 22l-20 12-20-12c-22-14-50-22-74-22H144c-12 0-22-10-22-22z" fill="url(#paper)" />
+  <path d="M256 176v190" stroke="#f36c3d" stroke-width="18" stroke-linecap="round" />
+  <path d="M156 196h84c23 0 44 8 61 22v120c-16-8-34-12-53-12h-92z" fill="#fffdf8" />
+  <path d="M356 196h-84c-23 0-44 8-61 22v120c16-8 34-12 53-12h92z" fill="#fff3e3" />
+  <path d="M180 232h80M180 266h66M180 300h50M332 232h-80M332 266h-64M332 300h-46" stroke="#f36c3d" stroke-width="14" stroke-linecap="round" opacity="0.78" />
+  <circle cx="384" cy="146" r="16" fill="#f36c3d" />
+</svg>
