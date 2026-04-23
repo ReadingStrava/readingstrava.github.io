@@ -181,8 +181,11 @@ section[hidden] {
 .screen__content {
   width: min(100%, 29rem);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(1.1rem, 2.4vh, 2rem);
   max-height: 100%;
+  justify-self: center;
+  margin-inline: auto;
 }
 
 .screen__content--timer,
@@ -202,6 +205,7 @@ section[hidden] {
 }
 
 .screen__content--result {
+  width: min(100%, 24rem);
   justify-items: center;
   align-content: start;
   justify-content: start;
@@ -315,12 +319,12 @@ section[hidden] {
 }
 
 .result-stat__value--pages {
-  font-size: clamp(4.6rem, 18vw, 7.2rem);
+  font-size: clamp(4.7rem, 19vw, 7.1rem);
 }
 
 .result-stat__value--pace,
 .result-stat__value--time {
-  font-size: clamp(4rem, 14vw, 5.8rem);
+  font-size: clamp(4.1rem, 15vw, 5.7rem);
 }
 
 .result-stat__row {
@@ -341,7 +345,7 @@ section[hidden] {
 }
 
 .result-icon__book {
-  width: min(100%, 11.75rem);
+  width: min(100%, 12.5rem);
   stroke: var(--accent);
   stroke-width: 10;
   stroke-linecap: round;
@@ -349,13 +353,34 @@ section[hidden] {
   fill: none;
 }
 
+.share-tip {
+  display: grid;
+  gap: 0.28rem;
+  justify-items: center;
+}
+
+.share-tip__title {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 .screen__content--result .button {
   min-height: 4.2rem;
 }
 
 .screen__content--result .screen__subtext {
-  max-width: 24rem;
-  font-size: 0.92rem;
+  max-width: 20rem;
+  font-size: 0.88rem;
+}
+
+.screen__content--result .screen__status {
+  min-height: 0;
+}
+
+.screen__content--result .screen__status:empty {
+  display: none;
 }
 
 .story-canvas {

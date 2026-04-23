@@ -40,18 +40,26 @@ const resultStatus = document.getElementById("resultStatus");
 const storyCanvas = document.getElementById("storyCanvas");
 
 const BOOK_MARK_PATHS = [
-  "M120 153C99 136 74 128 49 128C31 128 17 131 8 135V39C22 34 36 31 53 31C78 31 101 38 120 52",
-  "M120 153C141 136 166 128 191 128C209 128 223 131 232 135V39C218 34 204 31 187 31C162 31 139 38 120 52",
-  "M120 52V153",
-  "M33 57C44 54 55 52 66 52C84 52 100 56 114 65",
-  "M207 57C196 54 185 52 174 52C156 52 140 56 126 65",
-  "M52 147C71 146 91 152 108 164",
-  "M188 147C169 146 149 152 132 164"
+  "M34 70L25 24C24 18 21 14 17 14C12 14 10 19 12 27L21 118C22 123 26 125 31 123C48 117 64 118 82 124",
+  "M36 72C50 64 64 64 79 71",
+  "M47 42L73 96",
+  "M27 129C44 121 60 121 78 126",
+  "M44 141C58 133 72 134 86 141",
+  "M88 140C93 152 97 152 102 140",
+  "M98 83C111 69 126 57 145 46L181 26",
+  "M181 26C188 22 193 23 194 28C194 34 192 42 190 50L184 109",
+  "M121 69C138 63 154 62 173 66",
+  "M116 82C136 76 153 76 175 83",
+  "M109 95C131 90 149 91 171 98",
+  "M100 108C118 110 136 116 154 127",
+  "M106 120C125 114 143 114 162 118",
+  "M113 132C130 124 146 124 163 128"
 ];
 
 let deferredInstallPrompt = null;
 let state = loadState();
 let tickerId = null;
+let resultFeedbackResetId = null;
 
 const screenStatus = {
   setup: { text: "", error: false },
@@ -310,7 +318,7 @@ async function handleResultPrimaryAction() {
   }
 
   copyImageButton.disabled = true;
-  setStatus("result", "", false);
+  clearStatus("result");
 
   try {
     const blob = await buildStoryBlob(state.result);
@@ -325,19 +333,19 @@ async function handleResultPrimaryAction() {
     if (action === "copy") {
       const copied = await tryCopyImage(blob);
       if (copied) {
-        setStatus("result", "Transparent PNG copied. If paste is not supported, save it and add it from your gallery.", false);
+        flashPrimaryButtonLabel("Copied");
         return;
       }
 
       downloadBlob(blob, fileName);
-      setStatus("result", "Copy was not available, so the image was saved instead.", false);
+      flashPrimaryButtonLabel("Saved");
       return;
     }
 
     if (action === "share") {
       const shareResult = await tryShareImage(blob, fileName);
       if (shareResult === "shared") {
-        setStatus("result", "Share sheet opened. If Instagram Story is missing, save the transparent PNG and add it from your gallery.", false);
+        flashPrimaryButtonLabel("Shared");
         return;
       }
 
@@ -347,9 +355,9 @@ async function handleResultPrimaryAction() {
     }
 
     downloadBlob(blob, fileName);
-    setStatus("result", "Transparent PNG saved. Open Instagram Story and add it from your gallery.", false);
+    flashPrimaryButtonLabel("Saved");
   } catch (error) {
-    setStatus("result", "The share image could not be created. Try again.", true);
+    setStatus("result", "Couldn't create image.", true);
   } finally {
     copyImageButton.disabled = false;
     renderStatus("result");
@@ -386,14 +394,14 @@ function renderScreen() {
     resultPace.textContent = formatClock(state.result.paceSeconds);
     resultTime.textContent = formatClock(state.result.durationSeconds);
     shareHelp.textContent = getShareHelpText();
-    copyImageButton.textContent = getPrimaryActionLabel();
+    syncPrimaryButtonLabel();
     void renderStoryCard(state.result);
   } else {
     resultPages.textContent = "0";
     resultPace.textContent = "00:00";
     resultTime.textContent = "00:00";
-    shareHelp.textContent = "Save the transparent PNG, then add it to Instagram Story from your gallery";
-    copyImageButton.textContent = getPrimaryActionLabel();
+    shareHelp.textContent = "Save image -> Open Instagram Story -> Add from gallery";
+    syncPrimaryButtonLabel();
   }
 }
 
@@ -590,12 +598,12 @@ function formatClock(totalSeconds) {
 }
 
 function getPrimaryShareAction() {
-  if (supportsImageClipboard()) {
-    return "copy";
-  }
-
   if (supportsFileShare()) {
     return "share";
+  }
+
+  if (supportsImageClipboard()) {
+    return "copy";
   }
 
   return "save";
@@ -609,7 +617,7 @@ function getPrimaryActionLabel() {
   }
 
   if (action === "share") {
-    return "Share Image";
+    return "Share";
   }
 
   return "Save Image";
@@ -618,15 +626,15 @@ function getPrimaryActionLabel() {
 function getShareHelpText() {
   const action = getPrimaryShareAction();
 
-  if (action === "copy") {
-    return "Transparent PNG. If paste fails, add it to Instagram Story from your gallery";
-  }
-
   if (action === "share") {
-    return "Use the share sheet. If Instagram Story is missing, save the transparent PNG and add it from your gallery";
+    return "If Instagram Story is missing, save image -> Add from gallery";
   }
 
-  return "Save the transparent PNG, then add it to Instagram Story from your gallery";
+  if (action === "copy") {
+    return "Save image -> Open Instagram Story -> Add from gallery";
+  }
+
+  return "Save image -> Open Instagram Story -> Add from gallery";
 }
 
 async function renderStoryCard(result) {
@@ -668,7 +676,7 @@ async function renderStoryCard(result) {
     valueSize: 190
   });
 
-  drawStoryBookMark(context, width / 2, 1688, 320);
+  drawStoryBookMark(context, width / 2, 1658, 290);
 }
 
 function drawStoryStat(context, options) {
@@ -732,8 +740,8 @@ function drawCenteredValueWithSuffix(context, value, suffix, centerX, y, valueSi
 }
 
 function drawStoryBookMark(context, centerX, centerY, width) {
-  const scale = width / 240;
-  const height = 188 * scale;
+  const scale = width / 208;
+  const height = 168 * scale;
 
   context.save();
   context.translate(centerX - (width / 2), centerY - (height / 2));
@@ -755,6 +763,22 @@ function drawStoryBookMark(context, centerX, centerY, width) {
 
 function renderBookMarkSvg() {
   resultBookMark.innerHTML = BOOK_MARK_PATHS.map((pathData) => `<path d="${pathData}" />`).join("");
+}
+
+function syncPrimaryButtonLabel() {
+  copyImageButton.textContent = getPrimaryActionLabel();
+}
+
+function flashPrimaryButtonLabel(label) {
+  if (resultFeedbackResetId !== null) {
+    window.clearTimeout(resultFeedbackResetId);
+  }
+
+  copyImageButton.textContent = label;
+  resultFeedbackResetId = window.setTimeout(() => {
+    resultFeedbackResetId = null;
+    syncPrimaryButtonLabel();
+  }, 1800);
 }
 
 async function buildStoryBlob(result) {
