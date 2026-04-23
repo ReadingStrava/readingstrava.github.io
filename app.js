@@ -1,10 +1,25 @@
-const STORAGE_KEY = "reading-strava.activities.v1";
+const STORAGE_KEY = "reading-strava.activities.v2";
+const RECORDER_KEY = "reading-strava.recorder.v1";
 
 const installButton = document.getElementById("installButton");
 const installStatus = document.getElementById("installStatus");
-const sessionForm = document.getElementById("sessionForm");
-const sessionDate = document.getElementById("sessionDate");
-const sessionSummary = document.getElementById("sessionSummary");
+const openRecorderButton = document.getElementById("openRecorderButton");
+const focusRecorderButton = document.getElementById("focusRecorderButton");
+const dashboardApp = document.getElementById("dashboardApp");
+const recorderApp = document.getElementById("recorderApp");
+const exitRecorderButton = document.getElementById("exitRecorderButton");
+const recorderModeBadge = document.getElementById("recorderModeBadge");
+const recorderHint = document.getElementById("recorderHint");
+const recorderStateLabel = document.getElementById("recorderStateLabel");
+const recorderElapsed = document.getElementById("recorderElapsed");
+const recorderPages = document.getElementById("recorderPages");
+const recorderPace = document.getElementById("recorderPace");
+const recorderRange = document.getElementById("recorderRange");
+const recorderSummary = document.getElementById("recorderSummary");
+const startSessionButton = document.getElementById("startSessionButton");
+const pauseSessionButton = document.getElementById("pauseSessionButton");
+const finishSessionButton = document.getElementById("finishSessionButton");
+const resetSessionButton = document.getElementById("resetSessionButton");
 const activityFeed = document.getElementById("activityFeed");
 const shelfGrid = document.getElementById("shelfGrid");
 const challengeGrid = document.getElementById("challengeGrid");
@@ -17,12 +32,13 @@ const storyStatus = document.getElementById("storyStatus");
 const shareStoryButton = document.getElementById("shareStoryButton");
 const saveStoryButton = document.getElementById("saveStoryButton");
 
-const formFields = {
-  title: sessionForm.elements.namedItem("title"),
-  author: sessionForm.elements.namedItem("author"),
-  startPage: sessionForm.elements.namedItem("startPage"),
-  endPage: sessionForm.elements.namedItem("endPage"),
-  minutes: sessionForm.elements.namedItem("minutes")
+const recorderFields = {
+  title: document.getElementById("recorderTitle"),
+  author: document.getElementById("recorderAuthor"),
+  startPage: document.getElementById("recorderStartPage"),
+  currentPage: document.getElementById("recorderCurrentPage"),
+  mood: document.getElementById("recorderMood"),
+  notes: document.getElementById("recorderNotes")
 };
 
 const metricTargets = {
@@ -41,22 +57,33 @@ const sessionLabels = [
 
 let deferredInstallPrompt = null;
 let activities = loadActivities();
+let recorderState = loadRecorderState();
 let activeStory = null;
+let tickerId = null;
 
-sessionDate.value = toISODate(new Date());
-updateSessionSummary();
 renderApp();
 attachEvents();
+applyAppMode();
+renderRecorder();
 registerServiceWorker();
 
 function attachEvents() {
   installButton.addEventListener("click", handleInstall);
-  sessionForm.addEventListener("submit", handleSessionSubmit);
-  sessionForm.addEventListener("input", updateSessionSummary);
-  sessionForm.addEventListener("change", updateSessionSummary);
+  openRecorderButton.addEventListener("click", () => setRecorderPreview(true));
+  focusRecorderButton.addEventListener("click", () => setRecorderPreview(true));
+  exitRecorderButton.addEventListener("click", () => setRecorderPreview(false));
+
+  Object.entries(recorderFields).forEach(([key, field]) => {
+    field.addEventListener("input", () => handleRecorderFieldChange(key, field.value));
+    field.addEventListener("change", () => handleRecorderFieldChange(key, field.value));
+  });
+
+  startSessionButton.addEventListener("click", handleStartSession);
+  pauseSessionButton.addEventListener("click", handlePauseResumeSession);
+  finishSessionButton.addEventListener("click", handleFinishSession);
+  resetSessionButton.addEventListener("click", handleResetSession);
 
   activityFeed.addEventListener("click", handleFeedClick);
-
   shareStoryButton.addEventListener("click", handleShareStory);
   saveStoryButton.addEventListener("click", handleSaveStory);
 
@@ -72,6 +99,18 @@ function attachEvents() {
     }
   });
 
+  document.addEventListener("visibilitychange", () => {
+    renderRecorder();
+  });
+
+  const displayMode = window.matchMedia("(display-mode: standalone)");
+  if (typeof displayMode.addEventListener === "function") {
+    displayMode.addEventListener("change", () => {
+      applyAppMode();
+      renderRecorder();
+    });
+  }
+
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
@@ -83,7 +122,15 @@ function attachEvents() {
     deferredInstallPrompt = null;
     installButton.hidden = true;
     installStatus.textContent = "Reading Strava is installed. Open it from your home screen.";
+    applyAppMode();
+    renderRecorder();
   });
+}
+
+function handleRecorderFieldChange(key, value) {
+  recorderState = { ...recorderState, [key]: value };
+  saveRecorderState(recorderState);
+  renderRecorder();
 }
 
 function handleFeedClick(event) {
@@ -103,19 +150,18 @@ function handleFeedClick(event) {
   }
 
   const targetId = applauseButton.getAttribute("data-applaud-id");
-  activities = activities.map((activity) => {
-    if (activity.id !== targetId) {
-      return activity;
-    }
-    return { ...activity, applause: activity.applause + 1 };
-  });
+  activities = activities.map((activity) => (
+    activity.id === targetId
+      ? { ...activity, applause: activity.applause + 1 }
+      : activity
+  ));
 
   saveActivities(activities);
   renderFeed(activities);
 }
 
 async function handleInstall() {
-  if (window.matchMedia("(display-mode: standalone)").matches) {
+  if (detectStandalone()) {
     installButton.hidden = true;
     installStatus.textContent = "Reading Strava is already running as an installed app.";
     return;
@@ -139,75 +185,145 @@ async function handleInstall() {
   installStatus.textContent = "Use your browser menu to install or bookmark this app on your phone.";
 }
 
-function handleSessionSubmit(event) {
-  event.preventDefault();
-
-  if (!sessionForm.reportValidity()) {
+function handleStartSession() {
+  const validationError = validateRecorderSetup(recorderState);
+  if (validationError) {
+    setRecorderSummary(validationError, true);
     return;
   }
 
-  const draft = getSessionDraft();
-  if (draft.error) {
-    setSessionSummary(draft.error, true);
-    formFields.endPage.reportValidity();
+  recorderState = {
+    ...recorderState,
+    running: true,
+    startedAt: Date.now(),
+    accumulatedSeconds: 0,
+    date: isISODate(recorderState.date) ? recorderState.date : toISODate(new Date())
+  };
+
+  saveRecorderState(recorderState);
+  ensureTicker();
+  renderRecorder();
+}
+
+function handlePauseResumeSession() {
+  if (!hasStartedSession(recorderState)) {
     return;
   }
 
-  const formData = new FormData(sessionForm);
+  if (recorderState.running) {
+    recorderState = {
+      ...recorderState,
+      running: false,
+      accumulatedSeconds: getElapsedSeconds(recorderState),
+      startedAt: null
+    };
+  } else {
+    recorderState = {
+      ...recorderState,
+      running: true,
+      startedAt: Date.now()
+    };
+  }
+
+  saveRecorderState(recorderState);
+  ensureTicker();
+  renderRecorder();
+}
+
+function handleFinishSession() {
+  if (!hasStartedSession(recorderState)) {
+    setRecorderSummary("Start a session before you finish it.", true);
+    return;
+  }
+
+  const live = getRecorderSnapshot(recorderState);
+  if (live.pages < 1) {
+    setRecorderSummary("Set the page you finished on before ending the session.", true);
+    return;
+  }
+
+  const finishedState = {
+    ...recorderState,
+    running: false,
+    accumulatedSeconds: live.elapsedSeconds,
+    startedAt: null
+  };
+
   const newActivity = normalizeActivity({
     id: generateId(),
-    title: `${formData.get("title")}`.trim(),
-    author: `${formData.get("author")}`.trim(),
-    startPage: draft.startPage,
-    endPage: draft.endPage,
-    pages: draft.pages,
-    minutes: draft.minutes,
-    date: `${formData.get("date")}`,
-    mood: `${formData.get("mood")}`,
-    notes: `${formData.get("notes")}`.trim(),
+    title: finishedState.title,
+    author: finishedState.author,
+    startPage: live.startPage,
+    endPage: live.currentPage,
+    pages: live.pages,
+    durationSeconds: live.elapsedSeconds,
+    date: finishedState.date || toISODate(new Date()),
+    mood: finishedState.mood,
+    notes: finishedState.notes,
     label: sessionLabels[Math.floor(Math.random() * sessionLabels.length)],
     applause: 0
   });
 
   if (!newActivity) {
-    setSessionSummary("This session is missing required details.", true);
+    setRecorderSummary("This session could not be saved.", true);
     return;
   }
 
   activities = [newActivity, ...activities].sort((left, right) => right.date.localeCompare(left.date));
   saveActivities(activities);
+  recorderState = createEmptyRecorderState();
+  saveRecorderState(recorderState);
   renderApp();
+  renderRecorder();
   openStoryModal(newActivity);
-
-  sessionForm.reset();
-  sessionDate.value = toISODate(new Date());
-  updateSessionSummary();
 }
 
-function updateSessionSummary() {
-  const draft = getSessionDraft();
-
-  if (draft.error) {
-    setSessionSummary(draft.error, true);
+function handleResetSession() {
+  if (!hasRecorderDraft(recorderState)) {
     return;
   }
 
-  if (draft.pages && draft.minutes) {
-    const pace = formatPacePerPage(draft.minutes, draft.pages);
-    setSessionSummary(
-      `${draft.pages} pages from page ${draft.startPage} to ${draft.endPage} in ${formatDurationClock(draft.minutes)}. Pace: ${pace}/p.`,
-      false
-    );
-    return;
-  }
-
-  setSessionSummary("Enter a page range to see pages read and pace before you save.", false);
+  recorderState = createEmptyRecorderState();
+  saveRecorderState(recorderState);
+  ensureTicker();
+  renderRecorder();
 }
 
-function setSessionSummary(message, isError) {
-  sessionSummary.textContent = message;
-  sessionSummary.classList.toggle("session-summary--error", isError);
-  formFields.endPage.setCustomValidity(isError ? message : "");
+function applyAppMode() {
+  const recorderMode = isRecorderMode();
+
+  document.body.classList.toggle("mode-standalone", detectStandalone());
+  document.body.classList.toggle("mode-recorder", recorderMode);
+
+  dashboardApp.hidden = recorderMode;
+  recorderApp.hidden = !recorderMode;
+  exitRecorderButton.hidden = detectStandalone();
+  recorderModeBadge.textContent = detectStandalone() ? "Installed" : "Preview";
+
+  if (recorderMode) {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+}
+
+function setRecorderPreview(enabled) {
+  const url = new URL(window.location.href);
+  if (enabled) {
+    url.searchParams.set("mode", "recorder");
+  } else {
+    url.searchParams.delete("mode");
+  }
+
+  history.replaceState({}, "", url);
+  applyAppMode();
+  renderRecorder();
+}
+
+function isRecorderMode() {
+  return detectStandalone() || new URLSearchParams(window.location.search).get("mode") === "recorder";
+}
+
+function detectStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 
 function renderApp() {
@@ -255,14 +371,13 @@ function renderWeekChart(weeklySeries) {
 
 function renderFeed(records) {
   if (records.length === 0) {
-    activityFeed.innerHTML = '<p class="empty-state">Log a session to start your reading feed.</p>';
+    activityFeed.innerHTML = '<p class="empty-state">Finish a timed reading session to start your feed.</p>';
     return;
   }
 
   activityFeed.innerHTML = records.map((activity) => {
-    const pace = getPagesPerHour(activity.pages, activity.minutes);
+    const pace = getPagesPerHour(activity.pages, activity.durationSeconds);
     const range = formatPageRange(activity);
-
     return `
       <article class="activity-card">
         <div class="activity-card__top">
@@ -276,7 +391,7 @@ function renderFeed(records) {
         <ul class="activity-card__stats">
           <li>${activity.pages} pages</li>
           ${range ? `<li>${escapeHtml(range)}</li>` : ""}
-          <li>${activity.minutes} min</li>
+          <li>${formatDurationCompact(activity.durationSeconds)}</li>
           <li>${pace} p/h</li>
           <li>${escapeHtml(activity.mood)}</li>
         </ul>
@@ -306,11 +421,12 @@ function renderShelf(records) {
       title: activity.title,
       author: activity.author,
       pages: 0,
-      minutes: 0,
+      durationSeconds: 0,
       sessions: 0
     };
+
     entry.pages += activity.pages;
-    entry.minutes += activity.minutes;
+    entry.durationSeconds += activity.durationSeconds;
     entry.sessions += 1;
     byBook.set(key, entry);
   });
@@ -319,20 +435,17 @@ function renderShelf(records) {
     .sort((left, right) => right.pages - left.pages)
     .slice(0, 4);
 
-  shelfGrid.innerHTML = topBooks.map((book) => {
-    const pace = getPagesPerHour(book.pages, book.minutes);
-    return `
-      <article class="shelf-card">
-        <h3>${escapeHtml(book.title)}</h3>
-        <p>${escapeHtml(book.author)}</p>
-        <div class="shelf-card__pills">
-          <span class="book-pill">${book.pages} pages</span>
-          <span class="book-pill">${book.sessions} sessions</span>
-          <span class="book-pill">${pace} p/h</span>
-        </div>
-      </article>
-    `;
-  }).join("");
+  shelfGrid.innerHTML = topBooks.map((book) => `
+    <article class="shelf-card">
+      <h3>${escapeHtml(book.title)}</h3>
+      <p>${escapeHtml(book.author)}</p>
+      <div class="shelf-card__pills">
+        <span class="book-pill">${book.pages} pages</span>
+        <span class="book-pill">${book.sessions} sessions</span>
+        <span class="book-pill">${getPagesPerHour(book.pages, book.durationSeconds)} p/h</span>
+      </div>
+    </article>
+  `).join("");
 }
 
 function renderChallenges(metrics) {
@@ -398,6 +511,74 @@ function renderLeaderboard(monthlyPages) {
   `).join("");
 }
 
+function renderRecorder() {
+  const live = getRecorderSnapshot(recorderState);
+  const hasStarted = hasStartedSession(recorderState);
+  const isRunning = recorderState.running;
+
+  recorderFields.title.value = recorderState.title;
+  recorderFields.author.value = recorderState.author;
+  recorderFields.startPage.value = recorderState.startPage;
+  recorderFields.currentPage.value = recorderState.currentPage;
+  recorderFields.mood.value = recorderState.mood;
+  recorderFields.notes.value = recorderState.notes;
+
+  recorderFields.title.disabled = hasStarted;
+  recorderFields.author.disabled = hasStarted;
+  recorderFields.startPage.disabled = hasStarted;
+  recorderFields.currentPage.disabled = !hasStarted;
+
+  recorderStateLabel.textContent = isRunning ? "Recording" : hasStarted ? "Paused" : "Ready";
+  recorderElapsed.textContent = formatDurationClock(live.elapsedSeconds, true);
+  recorderPages.textContent = `${live.pages}`;
+  recorderPace.textContent = `${formatPacePerPage(live.elapsedSeconds, live.pages)}/p`;
+  recorderRange.textContent = live.range || "Set your range";
+
+  startSessionButton.hidden = hasStarted;
+  pauseSessionButton.hidden = !hasStarted;
+  pauseSessionButton.textContent = isRunning ? "Pause" : "Resume";
+  finishSessionButton.disabled = !hasStarted || live.pages < 1 || live.elapsedSeconds < 1;
+  finishSessionButton.hidden = !hasStarted;
+  resetSessionButton.disabled = !hasRecorderDraft(recorderState);
+
+  recorderHint.textContent = detectStandalone()
+    ? "Installed mode opens straight into the recorder."
+    : "Preview mode mirrors what the installed app will do.";
+
+  if (isRunning) {
+    setRecorderSummary("Session running. Update the page you finished on as you go.", false);
+  } else if (hasStarted) {
+    setRecorderSummary(`Paused at ${formatDurationClock(live.elapsedSeconds, true)}. Finish the session when you stop reading.`, false);
+  } else if (live.startPage !== null) {
+    setRecorderSummary(`Ready to begin from page ${live.startPage}. Tap Start Session to begin the timer.`, false);
+  } else {
+    setRecorderSummary("No active session.", false);
+  }
+
+  ensureTicker();
+}
+
+function setRecorderSummary(message, isError) {
+  recorderSummary.textContent = message;
+  recorderSummary.classList.toggle("recorder-summary--error", isError);
+}
+
+function ensureTicker() {
+  if (recorderState.running) {
+    if (tickerId === null) {
+      tickerId = window.setInterval(() => {
+        renderRecorder();
+      }, 1000);
+    }
+    return;
+  }
+
+  if (tickerId !== null) {
+    window.clearInterval(tickerId);
+    tickerId = null;
+  }
+}
+
 function openStoryModal(activity) {
   activeStory = activity;
   storyModal.hidden = false;
@@ -408,8 +589,8 @@ function openStoryModal(activity) {
     `${activity.title} by ${activity.author}`,
     `${activity.pages} pages`,
     formatPageRange(activity),
-    `${formatDurationClock(activity.minutes)} total`,
-    `${formatPacePerPage(activity.minutes, activity.pages)}/p`
+    `${formatDurationClock(activity.durationSeconds)} total`,
+    `${formatPacePerPage(activity.durationSeconds, activity.pages)}/p`
   ].filter(Boolean);
 
   storyDetails.textContent = parts.join("  |  ");
@@ -548,7 +729,7 @@ function drawStoryCard(activity) {
 
   drawStoryStat(context, {
     label: "PACE",
-    value: formatPacePerPage(activity.minutes, activity.pages),
+    value: formatPacePerPage(activity.durationSeconds, activity.pages),
     suffix: "/p",
     labelY: 820,
     valueY: 1040,
@@ -557,7 +738,7 @@ function drawStoryCard(activity) {
 
   drawStoryStat(context, {
     label: "TIME",
-    value: formatDurationClock(activity.minutes),
+    value: formatDurationClock(activity.durationSeconds),
     labelY: 1185,
     valueY: 1405,
     valueSize: 185
@@ -731,18 +912,17 @@ function drawStoryBookIcon(context, centerX, centerY, size) {
 function calculateMetrics(records) {
   const weeklySeries = buildWeeklySeries(records);
   const weeklyPages = weeklySeries.reduce((total, day) => total + day.pages, 0);
-  const weeklyMinutes = weeklySeries.reduce((total, day) => total + day.minutes, 0);
+  const weeklySeconds = weeklySeries.reduce((total, day) => total + day.durationSeconds, 0);
   const monthlyPages = getMonthlyTotal(records, "pages");
-  const monthlyMinutes = getMonthlyTotal(records, "minutes");
-  const averagePace = getPagesPerHour(weeklyPages, weeklyMinutes);
+  const monthlySeconds = getMonthlyTotal(records, "durationSeconds");
 
   return {
     currentStreak: getCurrentStreak(records),
     weeklyPages,
-    weeklyMinutes,
+    weeklyMinutes: Math.round(weeklySeconds / 60),
     monthlyPages,
-    monthlyMinutes,
-    averagePace,
+    monthlyMinutes: Math.round(monthlySeconds / 60),
+    averagePace: getPagesPerHour(weeklyPages, weeklySeconds),
     weeklySeries
   };
 }
@@ -762,7 +942,7 @@ function buildWeeklySeries(records) {
       date: isoDate,
       label: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(current),
       pages: matching.reduce((total, activity) => total + activity.pages, 0),
-      minutes: matching.reduce((total, activity) => total + activity.minutes, 0)
+      durationSeconds: matching.reduce((total, activity) => total + activity.durationSeconds, 0)
     });
   }
 
@@ -777,7 +957,6 @@ function getCurrentStreak(records) {
 
   const today = toISODate(new Date());
   const yesterday = shiftDate(1);
-
   if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) {
     return 0;
   }
@@ -815,28 +994,62 @@ function getMonthlyTotal(records, field) {
   }, 0);
 }
 
-function getSessionDraft() {
-  const startPage = parsePositiveInteger(formFields.startPage.value);
-  const endPage = parsePositiveInteger(formFields.endPage.value);
-  const minutes = parsePositiveInteger(formFields.minutes.value);
+function validateRecorderSetup(state) {
+  if (!`${state.title}`.trim()) {
+    return "Add a book title before starting the timer.";
+  }
 
-  if (startPage !== null && endPage !== null && endPage <= startPage) {
-    return {
-      startPage,
-      endPage,
-      minutes,
-      pages: null,
-      error: "End page must be higher than start page."
-    };
+  if (!`${state.author}`.trim()) {
+    return "Add the author before starting the timer.";
+  }
+
+  if (parsePositiveInteger(state.startPage) === null) {
+    return "Set a valid starting page before starting the timer.";
+  }
+
+  return "";
+}
+
+function getRecorderSnapshot(state) {
+  const startPage = parsePositiveInteger(state.startPage);
+  const currentPage = parsePositiveInteger(state.currentPage);
+  const elapsedSeconds = getElapsedSeconds(state);
+
+  let pages = 0;
+  if (startPage !== null && currentPage !== null && currentPage >= startPage) {
+    pages = currentPage - startPage + 1;
   }
 
   return {
     startPage,
-    endPage,
-    minutes,
-    pages: startPage !== null && endPage !== null ? endPage - startPage : null,
-    error: ""
+    currentPage,
+    elapsedSeconds,
+    pages,
+    range: startPage !== null && currentPage !== null && currentPage >= startPage
+      ? `pp. ${startPage}-${currentPage}`
+      : ""
   };
+}
+
+function getElapsedSeconds(state) {
+  if (!state.running || !Number.isFinite(state.startedAt)) {
+    return state.accumulatedSeconds;
+  }
+
+  return state.accumulatedSeconds + Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000));
+}
+
+function hasStartedSession(state) {
+  return state.running || state.accumulatedSeconds > 0;
+}
+
+function hasRecorderDraft(state) {
+  return hasStartedSession(state)
+    || `${state.title}`.trim().length > 0
+    || `${state.author}`.trim().length > 0
+    || `${state.startPage}`.trim().length > 0
+    || `${state.currentPage}`.trim().length > 0
+    || `${state.notes}`.trim().length > 0;
 }
 
 function loadActivities() {
@@ -878,26 +1091,82 @@ function saveActivities(records) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
 
+function loadRecorderState() {
+  try {
+    const raw = localStorage.getItem(RECORDER_KEY);
+    if (!raw) {
+      return createEmptyRecorderState();
+    }
+
+    const parsed = JSON.parse(raw);
+    return normalizeRecorderState(parsed);
+  } catch (error) {
+    return createEmptyRecorderState();
+  }
+}
+
+function saveRecorderState(state) {
+  localStorage.setItem(RECORDER_KEY, JSON.stringify(state));
+}
+
+function createEmptyRecorderState() {
+  return {
+    title: "",
+    author: "",
+    startPage: "",
+    currentPage: "",
+    mood: "Locked in",
+    notes: "",
+    date: toISODate(new Date()),
+    running: false,
+    startedAt: null,
+    accumulatedSeconds: 0
+  };
+}
+
+function normalizeRecorderState(raw) {
+  const base = createEmptyRecorderState();
+  const normalized = {
+    ...base,
+    title: `${raw.title || ""}`,
+    author: `${raw.author || ""}`,
+    startPage: `${raw.startPage || ""}`,
+    currentPage: `${raw.currentPage || ""}`,
+    mood: `${raw.mood || base.mood}`,
+    notes: `${raw.notes || ""}`,
+    date: isISODate(`${raw.date || ""}`) ? `${raw.date}` : base.date,
+    running: raw.running === true,
+    startedAt: Number.isFinite(raw.startedAt) ? raw.startedAt : null,
+    accumulatedSeconds: parseNonNegativeInteger(raw.accumulatedSeconds) ?? 0
+  };
+
+  if (!normalized.running) {
+    normalized.startedAt = null;
+  }
+
+  return normalized;
+}
+
 function createSeedActivities() {
   return [
-    buildSeedActivity(0, "Piranesi", "Susanna Clarke", 122, 160, 48, "Locked in", "Got to the part where the house itself feels like a character."),
-    buildSeedActivity(1, "Braiding Sweetgrass", "Robin Wall Kimmerer", 74, 100, 34, "Reflective", "Slow reading, a lot of stopping to underline."),
-    buildSeedActivity(2, "Orbital", "Samantha Harvey", 18, 40, 30, "Steady", "Perfect short session between meetings."),
-    buildSeedActivity(3, "The Left Hand of Darkness", "Ursula K. Le Guin", 188, 219, 43, "Locked in", "The world-building finally snapped into focus."),
-    buildSeedActivity(5, "On Writing", "Stephen King", 56, 74, 24, "Recovery read", "Quick craft refill before bed."),
-    buildSeedActivity(6, "The Book of Delights", "Ross Gay", 12, 26, 16, "Reflective", "A compact session with enough warmth to keep the streak alive.")
+    buildSeedActivity(0, "Piranesi", "Susanna Clarke", 122, 160, 48 * 60, "Locked in", "Got to the part where the house itself feels like a character."),
+    buildSeedActivity(1, "Braiding Sweetgrass", "Robin Wall Kimmerer", 74, 100, 34 * 60, "Reflective", "Slow reading, a lot of stopping to underline."),
+    buildSeedActivity(2, "Orbital", "Samantha Harvey", 18, 40, 30 * 60, "Steady", "Perfect short session between meetings."),
+    buildSeedActivity(3, "The Left Hand of Darkness", "Ursula K. Le Guin", 188, 219, 43 * 60, "Locked in", "The world-building finally snapped into focus."),
+    buildSeedActivity(5, "On Writing", "Stephen King", 56, 74, 24 * 60, "Recovery read", "Quick craft refill before bed."),
+    buildSeedActivity(6, "The Book of Delights", "Ross Gay", 12, 26, 16 * 60, "Reflective", "A compact session with enough warmth to keep the streak alive.")
   ];
 }
 
-function buildSeedActivity(daysAgo, title, author, startPage, endPage, minutes, mood, notes) {
+function buildSeedActivity(daysAgo, title, author, startPage, endPage, durationSeconds, mood, notes) {
   return {
     id: generateId(),
     title,
     author,
     startPage,
     endPage,
-    pages: endPage - startPage,
-    minutes,
+    pages: endPage - startPage + 1,
+    durationSeconds,
     date: shiftDate(daysAgo),
     mood,
     notes,
@@ -909,13 +1178,14 @@ function buildSeedActivity(daysAgo, title, author, startPage, endPage, minutes, 
 function normalizeActivity(activity, fallbackIndex = 0) {
   const startPage = parsePositiveInteger(activity.startPage);
   const endPage = parsePositiveInteger(activity.endPage);
-  const rangedPages = startPage !== null && endPage !== null && endPage > startPage
-    ? endPage - startPage
+  const rangedPages = startPage !== null && endPage !== null && endPage >= startPage
+    ? endPage - startPage + 1
     : null;
   const pages = rangedPages ?? parsePositiveInteger(activity.pages);
-  const minutes = parsePositiveInteger(activity.minutes);
+  const durationSeconds = parseNonNegativeInteger(activity.durationSeconds)
+    ?? (parsePositiveInteger(activity.minutes) !== null ? parsePositiveInteger(activity.minutes) * 60 : null);
 
-  if (pages === null || minutes === null) {
+  if (pages === null || durationSeconds === null || durationSeconds < 1) {
     return null;
   }
 
@@ -926,7 +1196,7 @@ function normalizeActivity(activity, fallbackIndex = 0) {
     startPage,
     endPage,
     pages,
-    minutes,
+    durationSeconds,
     date: isISODate(`${activity.date || ""}`) ? `${activity.date}` : shiftDate(fallbackIndex),
     mood: `${activity.mood || "Steady"}`.trim(),
     notes: `${activity.notes || ""}`.trim(),
@@ -949,41 +1219,49 @@ function isISODate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function getPagesPerHour(pages, minutes) {
-  if (pages < 1 || minutes < 1) {
+function getPagesPerHour(pages, durationSeconds) {
+  if (pages < 1 || durationSeconds < 1) {
     return 0;
   }
 
-  return Math.round((pages / minutes) * 60);
+  return Math.round((pages / durationSeconds) * 3600);
 }
 
-function formatPacePerPage(minutes, pages) {
-  if (pages < 1 || minutes < 1) {
+function formatPacePerPage(durationSeconds, pages) {
+  if (pages < 1 || durationSeconds < 1) {
     return "00:00";
   }
 
-  const totalSeconds = Math.round((minutes * 60) / pages);
-  return formatSecondsClock(totalSeconds);
+  return formatDurationClock(Math.round(durationSeconds / pages));
 }
 
-function formatDurationClock(totalMinutes) {
-  const roundedMinutes = Math.max(0, Math.round(totalMinutes));
-  const hours = Math.floor(roundedMinutes / 60);
-  const minutes = roundedMinutes % 60;
-  return `${`${hours}`.padStart(2, "0")}:${`${minutes}`.padStart(2, "0")}`;
-}
+function formatDurationClock(totalSeconds, alwaysHours = false) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
 
-function formatSecondsClock(totalSeconds) {
-  const roundedSeconds = Math.max(0, Math.round(totalSeconds));
-  const hours = Math.floor(roundedSeconds / 3600);
-  const minutes = Math.floor((roundedSeconds % 3600) / 60);
-  const seconds = roundedSeconds % 60;
-
-  if (hours > 0) {
+  if (alwaysHours || hours > 0) {
     return `${`${hours}`.padStart(2, "0")}:${`${minutes}`.padStart(2, "0")}:${`${seconds}`.padStart(2, "0")}`;
   }
 
   return `${`${minutes}`.padStart(2, "0")}:${`${seconds}`.padStart(2, "0")}`;
+}
+
+function formatDurationCompact(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} min`;
+  }
+
+  return `${safeSeconds}s`;
 }
 
 function formatPageRange(activity) {
@@ -1006,10 +1284,10 @@ function formatReadableDate(value) {
 function createShareText(activity) {
   const range = formatPageRange(activity);
   const segments = [
-    `I logged ${activity.pages} pages`,
+    `I just logged ${activity.pages} pages`,
     range ? `(${range})` : "",
-    `in ${formatDurationClock(activity.minutes)} on Reading Strava.`,
-    location.href
+    `in ${formatDurationClock(activity.durationSeconds)} on Reading Strava.`,
+    window.location.origin
   ].filter(Boolean);
 
   return segments.join(" ");

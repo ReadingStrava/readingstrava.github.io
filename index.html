@@ -20,7 +20,7 @@
 <body>
   <div class="ambient-glow ambient-glow--left"></div>
   <div class="ambient-glow ambient-glow--right"></div>
-  <main class="app-shell">
+  <main id="dashboardApp" class="app-shell">
     <section class="hero panel">
       <div class="hero-copy">
         <p class="eyebrow">Book miles, chapter climbs, daily streaks</p>
@@ -31,6 +31,7 @@
         </p>
         <div class="hero-actions">
           <button id="installButton" class="button button--solid" type="button">Add to Home Screen</button>
+          <button id="openRecorderButton" class="button button--ghost" type="button">Open Recorder</button>
           <p id="installStatus" class="install-status" aria-live="polite">Use this button to install the app or get bookmark instructions for your phone.</p>
         </div>
       </div>
@@ -88,54 +89,15 @@
       <section class="panel form-panel">
         <div class="section-heading">
           <div>
-            <p class="section-kicker">Quick log</p>
-            <h2>Record a reading session</h2>
+            <p class="section-kicker">Recorder</p>
+            <h2>Use the timer-first flow</h2>
           </div>
-          <p class="section-copy">Enter your page range, let the app calculate the session, then open a story-ready poster.</p>
+          <p class="section-copy">The installed app now opens directly into a reading recorder with start, pause, finish, and story share.</p>
         </div>
-        <form id="sessionForm" class="session-form">
-          <label>
-            <span>Book title</span>
-            <input type="text" name="title" placeholder="The Overstory" required>
-          </label>
-          <label>
-            <span>Author</span>
-            <input type="text" name="author" placeholder="Richard Powers" required>
-          </label>
-          <label>
-            <span>Start page</span>
-            <input type="number" name="startPage" min="1" inputmode="numeric" placeholder="112" required>
-          </label>
-          <label>
-            <span>End page</span>
-            <input type="number" name="endPage" min="1" inputmode="numeric" placeholder="148" required>
-          </label>
-          <label>
-            <span>Minutes</span>
-            <input type="number" name="minutes" min="1" inputmode="numeric" placeholder="45" required>
-          </label>
-          <label>
-            <span>Date</span>
-            <input id="sessionDate" type="date" name="date" required>
-          </label>
-          <label>
-            <span>Mood</span>
-            <select name="mood">
-              <option value="Locked in">Locked in</option>
-              <option value="Steady">Steady</option>
-              <option value="Reflective">Reflective</option>
-              <option value="Recovery read">Recovery read</option>
-            </select>
-          </label>
-          <div id="sessionSummary" class="session-summary session-form__wide" aria-live="polite">
-            Enter a page range to see pages read and pace before you save.
-          </div>
-          <label class="session-form__wide">
-            <span>Notes</span>
-            <textarea name="notes" rows="4" placeholder="What made this session memorable?"></textarea>
-          </label>
-          <button class="button button--solid session-form__submit" type="submit">Log Session and Open Story</button>
-        </form>
+        <div class="focus-panel__content">
+          <p id="focusPanelCopy" class="section-copy">Use Recorder to enter the book, set your starting page, run the timer, update the page you finished on, and open a story poster at the end.</p>
+          <button id="focusRecorderButton" class="button button--solid" type="button">Open Recorder</button>
+        </div>
       </section>
 
       <section class="panel feed-panel">
@@ -182,6 +144,92 @@
         <ol id="leaderboardList" class="leaderboard-list"></ol>
       </section>
     </div>
+  </main>
+  <main id="recorderApp" class="recorder-app" hidden>
+    <section class="recorder-screen">
+      <header class="recorder-header">
+        <button id="exitRecorderButton" class="recorder-header__button" type="button">Back</button>
+        <div class="recorder-header__title">
+          <p class="recorder-header__eyebrow">Reading Strava</p>
+          <h1>Reading Recorder</h1>
+        </div>
+        <div class="recorder-header__status">
+          <span id="recorderModeBadge" class="recorder-badge">Installed</span>
+        </div>
+      </header>
+
+      <section class="recorder-section">
+        <div class="recorder-section__heading">
+          <p class="section-kicker">Book</p>
+          <p id="recorderHint" class="recorder-hint">Enter your book and starting page, then tap Start Session.</p>
+        </div>
+        <div class="recorder-grid">
+          <label class="recorder-field">
+            <span>Book title</span>
+            <input id="recorderTitle" type="text" inputmode="text" placeholder="The Overstory">
+          </label>
+          <label class="recorder-field">
+            <span>Author</span>
+            <input id="recorderAuthor" type="text" inputmode="text" placeholder="Richard Powers">
+          </label>
+          <label class="recorder-field">
+            <span>Start page</span>
+            <input id="recorderStartPage" type="number" min="1" inputmode="numeric" placeholder="112">
+          </label>
+          <label class="recorder-field">
+            <span>Page reached</span>
+            <input id="recorderCurrentPage" type="number" min="1" inputmode="numeric" placeholder="148">
+          </label>
+        </div>
+      </section>
+
+      <section class="recorder-session">
+        <p id="recorderStateLabel" class="recorder-session__label">Ready</p>
+        <div id="recorderElapsed" class="recorder-session__time">00:00:00</div>
+        <div class="recorder-metrics">
+          <article class="recorder-metric">
+            <span>Page(s)</span>
+            <strong id="recorderPages">0</strong>
+          </article>
+          <article class="recorder-metric">
+            <span>Pace</span>
+            <strong id="recorderPace">00:00/p</strong>
+          </article>
+          <article class="recorder-metric">
+            <span>Range</span>
+            <strong id="recorderRange">Set your range</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="recorder-section recorder-section--secondary">
+        <div class="recorder-grid">
+          <label class="recorder-field">
+            <span>Mood</span>
+            <select id="recorderMood">
+              <option value="Locked in">Locked in</option>
+              <option value="Steady">Steady</option>
+              <option value="Reflective">Reflective</option>
+              <option value="Recovery read">Recovery read</option>
+            </select>
+          </label>
+          <label class="recorder-field recorder-field--wide">
+            <span>Notes</span>
+            <textarea id="recorderNotes" rows="4" placeholder="What happened in this session?"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <footer class="recorder-footer">
+        <p id="recorderSummary" class="recorder-summary" aria-live="polite">No active session.</p>
+        <div class="recorder-actions">
+          <button id="startSessionButton" class="button button--solid" type="button">Start Session</button>
+          <button id="pauseSessionButton" class="button button--ghost" type="button">Pause</button>
+          <button id="finishSessionButton" class="button button--solid" type="button">Finish and Share</button>
+          <button id="resetSessionButton" class="button button--ghost" type="button">Reset</button>
+        </div>
+      </footer>
+    </section>
   </main>
   <section id="storyModal" class="story-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="storyModalTitle">
     <div class="story-modal__backdrop" data-close-story></div>

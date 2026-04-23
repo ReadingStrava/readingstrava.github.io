@@ -1,4 +1,4 @@
-const CACHE_NAME = "reading-strava-v2";
+const CACHE_NAME = "reading-strava-v3";
 const APP_ASSETS = [
   "./",
   "./index.html",
