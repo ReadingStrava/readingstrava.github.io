@@ -32,11 +32,22 @@ const saveStatus = document.getElementById("saveStatus");
 const resultPages = document.getElementById("resultPages");
 const resultPace = document.getElementById("resultPace");
 const resultTime = document.getElementById("resultTime");
+const resultBookMark = document.getElementById("resultBookMark");
 const shareHelp = document.getElementById("shareHelp");
 const copyImageButton = document.getElementById("copyImageButton");
 const newSessionButton = document.getElementById("newSessionButton");
 const resultStatus = document.getElementById("resultStatus");
 const storyCanvas = document.getElementById("storyCanvas");
+
+const BOOK_MARK_PATHS = [
+  "M120 153C99 136 74 128 49 128C31 128 17 131 8 135V39C22 34 36 31 53 31C78 31 101 38 120 52",
+  "M120 153C141 136 166 128 191 128C209 128 223 131 232 135V39C218 34 204 31 187 31C162 31 139 38 120 52",
+  "M120 52V153",
+  "M33 57C44 54 55 52 66 52C84 52 100 56 114 65",
+  "M207 57C196 54 185 52 174 52C156 52 140 56 126 65",
+  "M52 147C71 146 91 152 108 164",
+  "M188 147C169 146 149 152 132 164"
+];
 
 let deferredInstallPrompt = null;
 let state = loadState();
@@ -51,6 +62,7 @@ const screenStatus = {
 initialize();
 
 function initialize() {
+  renderBookMarkSvg();
   attachEvents();
   render();
   registerServiceWorker();
@@ -313,7 +325,7 @@ async function handleResultPrimaryAction() {
     if (action === "copy") {
       const copied = await tryCopyImage(blob);
       if (copied) {
-        setStatus("result", "Image copied. Paste it where supported, or save it and add it from your gallery.", false);
+        setStatus("result", "Transparent PNG copied. If paste is not supported, save it and add it from your gallery.", false);
         return;
       }
 
@@ -325,7 +337,7 @@ async function handleResultPrimaryAction() {
     if (action === "share") {
       const shareResult = await tryShareImage(blob, fileName);
       if (shareResult === "shared") {
-        setStatus("result", "Share sheet opened. If Instagram Story is missing, save the image and add it from your gallery.", false);
+        setStatus("result", "Share sheet opened. If Instagram Story is missing, save the transparent PNG and add it from your gallery.", false);
         return;
       }
 
@@ -335,7 +347,7 @@ async function handleResultPrimaryAction() {
     }
 
     downloadBlob(blob, fileName);
-    setStatus("result", "Image saved. Open Instagram Story and add it from your gallery.", false);
+    setStatus("result", "Transparent PNG saved. Open Instagram Story and add it from your gallery.", false);
   } catch (error) {
     setStatus("result", "The share image could not be created. Try again.", true);
   } finally {
@@ -380,7 +392,7 @@ function renderScreen() {
     resultPages.textContent = "0";
     resultPace.textContent = "00:00";
     resultTime.textContent = "00:00";
-    shareHelp.textContent = "Save image -> Open Instagram Story -> Add from gallery";
+    shareHelp.textContent = "Save the transparent PNG, then add it to Instagram Story from your gallery";
     copyImageButton.textContent = getPrimaryActionLabel();
   }
 }
@@ -607,14 +619,14 @@ function getShareHelpText() {
   const action = getPrimaryShareAction();
 
   if (action === "copy") {
-    return "Copy image or save it, then open Instagram Story and add it from your gallery";
+    return "Transparent PNG. If paste fails, add it to Instagram Story from your gallery";
   }
 
   if (action === "share") {
-    return "Use the share sheet. If Instagram Story is missing, save the image and add it from your gallery";
+    return "Use the share sheet. If Instagram Story is missing, save the transparent PNG and add it from your gallery";
   }
 
-  return "Save image -> Open Instagram Story -> Add from gallery";
+  return "Save the transparent PNG, then add it to Instagram Story from your gallery";
 }
 
 async function renderStoryCard(result) {
@@ -630,8 +642,6 @@ async function renderStoryCard(result) {
   const { width, height } = storyCanvas;
 
   context.clearRect(0, 0, width, height);
-  context.fillStyle = "#000000";
-  context.fillRect(0, 0, width, height);
 
   drawStoryStat(context, {
     label: "PAGE(S)",
@@ -658,7 +668,7 @@ async function renderStoryCard(result) {
     valueSize: 190
   });
 
-  drawStoryBookIcon(context, width / 2, 1705, 280);
+  drawStoryBookMark(context, width / 2, 1688, 320);
 }
 
 function drawStoryStat(context, options) {
@@ -669,6 +679,9 @@ function drawStoryStat(context, options) {
   context.textBaseline = "alphabetic";
   context.fillStyle = "rgba(255, 255, 255, 0.96)";
   context.font = '700 68px "Space Grotesk", "Segoe UI", sans-serif';
+  context.shadowColor = "rgba(0, 0, 0, 0.42)";
+  context.shadowBlur = 22;
+  context.shadowOffsetY = 8;
   context.fillText(options.label, centerX, options.labelY);
 
   if (options.suffix) {
@@ -694,6 +707,9 @@ function drawCenteredValueWithSuffix(context, value, suffix, centerX, y, valueSi
   context.save();
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
+  context.shadowColor = "rgba(0, 0, 0, 0.46)";
+  context.shadowBlur = 34;
+  context.shadowOffsetY = 12;
 
   context.font = `700 ${valueSize}px "Space Grotesk", "Segoe UI", sans-serif`;
   const valueWidth = context.measureText(value).width;
@@ -715,58 +731,30 @@ function drawCenteredValueWithSuffix(context, value, suffix, centerX, y, valueSi
   context.restore();
 }
 
-function drawStoryBookIcon(context, centerX, centerY, size) {
-  const unit = size / 208;
+function drawStoryBookMark(context, centerX, centerY, width) {
+  const scale = width / 240;
+  const height = 188 * scale;
 
   context.save();
-  context.translate(centerX, centerY);
+  context.translate(centerX - (width / 2), centerY - (height / 2));
+  context.scale(scale, scale);
   context.strokeStyle = "#f48135";
-  context.lineWidth = 10 * unit;
+  context.lineWidth = 10;
   context.lineCap = "round";
   context.lineJoin = "round";
+  context.shadowColor = "rgba(0, 0, 0, 0.3)";
+  context.shadowBlur = 18;
+  context.shadowOffsetY = 8;
 
-  context.beginPath();
-  context.moveTo(-64 * unit, -32 * unit);
-  context.quadraticCurveTo(-94 * unit, -84 * unit, -146 * unit, -70 * unit);
-  context.lineTo(-142 * unit, 34 * unit);
-  context.quadraticCurveTo(-86 * unit, 16 * unit, -16 * unit, 36 * unit);
-  context.quadraticCurveTo(-6 * unit, 38 * unit, 0, 52 * unit);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(64 * unit, -32 * unit);
-  context.quadraticCurveTo(94 * unit, -84 * unit, 146 * unit, -70 * unit);
-  context.lineTo(142 * unit, 34 * unit);
-  context.quadraticCurveTo(86 * unit, 16 * unit, 16 * unit, 36 * unit);
-  context.quadraticCurveTo(6 * unit, 38 * unit, 0, 52 * unit);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(-8 * unit, 52 * unit);
-  context.quadraticCurveTo(0, 82 * unit, 8 * unit, 52 * unit);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(-136 * unit, -64 * unit);
-  context.lineTo(-86 * unit, 20 * unit);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(136 * unit, -64 * unit);
-  context.lineTo(86 * unit, 20 * unit);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(-116 * unit, 58 * unit);
-  context.quadraticCurveTo(-68 * unit, 24 * unit, -20 * unit, 40 * unit);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(116 * unit, 58 * unit);
-  context.quadraticCurveTo(68 * unit, 24 * unit, 20 * unit, 40 * unit);
-  context.stroke();
+  BOOK_MARK_PATHS.forEach((pathData) => {
+    context.stroke(new Path2D(pathData));
+  });
 
   context.restore();
+}
+
+function renderBookMarkSvg() {
+  resultBookMark.innerHTML = BOOK_MARK_PATHS.map((pathData) => `<path d="${pathData}" />`).join("");
 }
 
 async function buildStoryBlob(result) {
