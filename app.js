@@ -7,6 +7,7 @@ const openRecorderButton = document.getElementById("openRecorderButton");
 const focusRecorderButton = document.getElementById("focusRecorderButton");
 const dashboardApp = document.getElementById("dashboardApp");
 const recorderApp = document.getElementById("recorderApp");
+const shareApp = document.getElementById("shareApp");
 const exitRecorderButton = document.getElementById("exitRecorderButton");
 const recorderModeBadge = document.getElementById("recorderModeBadge");
 const recorderHint = document.getElementById("recorderHint");
@@ -25,12 +26,14 @@ const shelfGrid = document.getElementById("shelfGrid");
 const challengeGrid = document.getElementById("challengeGrid");
 const leaderboardList = document.getElementById("leaderboardList");
 const weekChart = document.getElementById("weekChart");
-const storyModal = document.getElementById("storyModal");
 const storyCanvas = document.getElementById("storyCanvas");
-const storyDetails = document.getElementById("storyDetails");
-const storyStatus = document.getElementById("storyStatus");
-const shareStoryButton = document.getElementById("shareStoryButton");
-const saveStoryButton = document.getElementById("saveStoryButton");
+const sharePagesValue = document.getElementById("sharePagesValue");
+const sharePaceValue = document.getElementById("sharePaceValue");
+const shareTimeValue = document.getElementById("shareTimeValue");
+const shareHowTo = document.getElementById("shareHowTo");
+const shareStatus = document.getElementById("shareStatus");
+const sharePrimaryButton = document.getElementById("sharePrimaryButton");
+const shareSecondaryButton = document.getElementById("shareSecondaryButton");
 
 const recorderFields = {
   title: document.getElementById("recorderTitle"),
@@ -60,6 +63,8 @@ let activities = loadActivities();
 let recorderState = loadRecorderState();
 let activeStory = null;
 let tickerId = null;
+let shareScreenOpen = false;
+let shareScreenSource = "feed";
 
 renderApp();
 attachEvents();
@@ -84,18 +89,12 @@ function attachEvents() {
   resetSessionButton.addEventListener("click", handleResetSession);
 
   activityFeed.addEventListener("click", handleFeedClick);
-  shareStoryButton.addEventListener("click", handleShareStory);
-  saveStoryButton.addEventListener("click", handleSaveStory);
-
-  storyModal.addEventListener("click", (event) => {
-    if (event.target.closest("[data-close-story]")) {
-      closeStoryModal();
-    }
-  });
+  sharePrimaryButton.addEventListener("click", handlePrimaryShareAction);
+  shareSecondaryButton.addEventListener("click", handleShareSecondaryAction);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !storyModal.hidden) {
-      closeStoryModal();
+    if (event.key === "Escape" && shareScreenOpen) {
+      closeShareScreen();
     }
   });
 
@@ -139,7 +138,7 @@ function handleFeedClick(event) {
     const targetId = storyButton.getAttribute("data-story-id");
     const activity = activities.find((item) => item.id === targetId);
     if (activity) {
-      openStoryModal(activity);
+      openShareScreen(activity, "feed");
     }
     return;
   }
@@ -275,7 +274,7 @@ function handleFinishSession() {
   saveRecorderState(recorderState);
   renderApp();
   renderRecorder();
-  openStoryModal(newActivity);
+  openShareScreen(newActivity, "finish");
 }
 
 function handleResetSession() {
@@ -295,12 +294,13 @@ function applyAppMode() {
   document.body.classList.toggle("mode-standalone", detectStandalone());
   document.body.classList.toggle("mode-recorder", recorderMode);
 
-  dashboardApp.hidden = recorderMode;
-  recorderApp.hidden = !recorderMode;
+  dashboardApp.hidden = recorderMode || shareScreenOpen;
+  recorderApp.hidden = !recorderMode || shareScreenOpen;
+  shareApp.hidden = !shareScreenOpen;
   exitRecorderButton.hidden = detectStandalone();
   recorderModeBadge.textContent = detectStandalone() ? "Installed" : "Preview";
 
-  if (recorderMode) {
+  if (recorderMode || shareScreenOpen) {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }
 }
@@ -579,87 +579,86 @@ function ensureTicker() {
   }
 }
 
-function openStoryModal(activity) {
+function openShareScreen(activity, source) {
   activeStory = activity;
-  storyModal.hidden = false;
-  storyModal.setAttribute("aria-hidden", "false");
+  shareScreenSource = source;
+  shareScreenOpen = true;
   document.body.classList.add("story-open");
+  renderShareScreen(activity);
+  applyAppMode();
+}
 
-  const parts = [
-    `${activity.title} by ${activity.author}`,
-    `${activity.pages} pages`,
-    formatPageRange(activity),
-    `${formatDurationClock(activity.durationSeconds)} total`,
-    `${formatPacePerPage(activity.durationSeconds, activity.pages)}/p`
-  ].filter(Boolean);
+function closeShareScreen() {
+  shareScreenOpen = false;
+  activeStory = null;
+  document.body.classList.remove("story-open");
+  applyAppMode();
+}
 
-  storyDetails.textContent = parts.join("  |  ");
-  setStoryStatus(getDefaultStoryStatus(), false);
+async function handlePrimaryShareAction() {
+  if (!activeStory) {
+    return;
+  }
+
+  setShareStatus("Preparing your reading card...", false);
+
+  const storyDataUrl = getStoryDataUrl();
+  if (!storyDataUrl) {
+    setShareStatus("The reading card could not be created on this device.", true);
+    return;
+  }
+
+  const fileName = makeShareFilename(activeStory);
+  const imageBlob = dataUrlToBlob(storyDataUrl);
+
+  if (supportsImageClipboard()) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ [imageBlob.type]: imageBlob })
+      ]);
+      setShareStatus("Image copied. If Instagram Story does not accept paste on this device, use Save Image and add it from your gallery.", false);
+      return;
+    } catch (error) {
+      downloadBlob(imageBlob, fileName);
+      setShareStatus("Copy Image is not supported on this browser, so the image was saved instead.", false);
+      sharePrimaryButton.textContent = "Save Image";
+      return;
+    }
+  }
+
+  downloadBlob(imageBlob, fileName);
+  setShareStatus(getSaveFallbackMessage(), false);
+}
+
+function handleShareSecondaryAction() {
+  if (shareScreenSource === "finish") {
+    closeShareScreen();
+    renderRecorder();
+    recorderFields.title.focus();
+    return;
+  }
+
+  closeShareScreen();
+}
+
+function renderShareScreen(activity) {
+  sharePagesValue.textContent = `${activity.pages}`;
+  sharePaceValue.textContent = formatStoryMetricClock(activity.durationSeconds / activity.pages);
+  shareTimeValue.textContent = formatStoryMetricClock(activity.durationSeconds);
+  shareHowTo.textContent = "Save image -> Open Instagram Story -> Add from gallery";
+  shareSecondaryButton.textContent = shareScreenSource === "finish" ? "New Session" : "Close";
+  setShareStatus(getDefaultShareStatus(), false);
+  updatePrimaryShareButton();
   renderStoryCard(activity);
 }
 
-function closeStoryModal() {
-  storyModal.hidden = true;
-  storyModal.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("story-open");
+function updatePrimaryShareButton() {
+  sharePrimaryButton.textContent = supportsImageClipboard() ? "Copy Image" : "Save Image";
 }
 
-async function handleShareStory() {
-  if (!activeStory) {
-    return;
-  }
-
-  setStoryStatus("Preparing your story image...", false);
-
-  try {
-    const blob = await canvasToBlob(storyCanvas);
-    const fileName = makeShareFilename(activeStory);
-    const shareText = createShareText(activeStory);
-
-    if (typeof File === "function") {
-      const file = new File([blob], fileName, { type: "image/png" });
-      if (canShareImageFile(file)) {
-        await navigator.share({
-          title: `Reading Strava: ${activeStory.title}`,
-          text: shareText,
-          files: [file]
-        });
-        setStoryStatus("Share sheet opened. If Instagram Story is not listed, save the image and add it from your gallery.", false);
-        return;
-      }
-    }
-
-    downloadBlob(blob, fileName);
-    setStoryStatus(getSaveFallbackMessage(), false);
-  } catch (error) {
-    if (error && error.name === "AbortError") {
-      setStoryStatus("Share cancelled. You can still save the image and add it to your story.", false);
-      return;
-    }
-
-    setStoryStatus("This browser could not open the share sheet. Save the image instead.", true);
-  }
-}
-
-async function handleSaveStory() {
-  if (!activeStory) {
-    return;
-  }
-
-  setStoryStatus("Preparing your story image...", false);
-
-  try {
-    const blob = await canvasToBlob(storyCanvas);
-    downloadBlob(blob, makeShareFilename(activeStory));
-    setStoryStatus(getSaveFallbackMessage(), false);
-  } catch (error) {
-    setStoryStatus("The story image could not be created on this device.", true);
-  }
-}
-
-function setStoryStatus(message, isError) {
-  storyStatus.textContent = message;
-  storyStatus.classList.toggle("story-status--error", isError);
+function setShareStatus(message, isError) {
+  shareStatus.textContent = message;
+  shareStatus.classList.toggle("share-screen__status--error", isError);
 }
 
 function renderStoryCard(activity) {
@@ -699,61 +698,33 @@ function drawStoryCard(activity) {
 
   context.save();
   context.textAlign = "center";
-  context.fillStyle = "rgba(255, 255, 255, 0.7)";
-  context.font = '700 34px "Space Grotesk", "Segoe UI", sans-serif';
-  context.fillText("READING STRAVA", width / 2, 96);
-
-  const lastTitleY = drawWrappedCenteredText(
-    context,
-    activity.title,
-    width / 2,
-    170,
-    width - 220,
-    2,
-    68,
-    80,
-    "#ffffff"
-  );
-
-  context.fillStyle = "rgba(255, 255, 255, 0.6)";
-  context.font = '500 38px "Space Grotesk", "Segoe UI", sans-serif';
-  context.fillText(activity.author, width / 2, lastTitleY + 54);
 
   drawStoryStat(context, {
     label: "PAGE(S)",
     value: `${activity.pages}`,
-    labelY: 420,
-    valueY: 650,
+    labelY: 250,
+    valueY: 470,
     valueSize: 250
   });
 
   drawStoryStat(context, {
     label: "PACE",
-    value: formatPacePerPage(activity.durationSeconds, activity.pages),
+    value: formatStoryMetricClock(activity.durationSeconds / activity.pages),
     suffix: "/p",
-    labelY: 820,
-    valueY: 1040,
+    labelY: 670,
+    valueY: 900,
     valueSize: 165
   });
 
   drawStoryStat(context, {
     label: "TIME",
-    value: formatDurationClock(activity.durationSeconds),
-    labelY: 1185,
-    valueY: 1405,
+    value: formatStoryMetricClock(activity.durationSeconds),
+    labelY: 1095,
+    valueY: 1320,
     valueSize: 185
   });
 
-  context.fillStyle = "rgba(255, 255, 255, 0.72)";
-  context.font = '600 36px "Space Grotesk", "Segoe UI", sans-serif';
-  context.fillText(formatPageRange(activity) || `${activity.pages} pages logged`, width / 2, 1545);
-  context.fillText(formatReadableDate(activity.date), width / 2, 1600);
-
-  drawStoryBookIcon(context, width / 2, 1735, 208);
-
-  context.fillStyle = "#ffffff";
-  context.font = '700 62px "Space Grotesk", "Segoe UI", sans-serif';
-  context.fillText("READING STRAVA", width / 2, 1870);
+  drawStoryBookIcon(context, width / 2, 1600, 208);
   context.restore();
 }
 
@@ -1264,6 +1235,18 @@ function formatDurationCompact(totalSeconds) {
   return `${safeSeconds}s`;
 }
 
+function formatStoryMetricClock(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.round((safeSeconds % 3600) / 60);
+
+  if (minutes === 60) {
+    return `${`${hours + 1}`.padStart(2, "0")}:00`;
+  }
+
+  return `${`${hours}`.padStart(2, "0")}:${`${minutes}`.padStart(2, "0")}`;
+}
+
 function formatPageRange(activity) {
   if (activity.startPage === null || activity.endPage === null) {
     return "";
@@ -1303,29 +1286,33 @@ function makeShareFilename(activity) {
   return `reading-strava-${slug}.png`;
 }
 
-function canShareImageFile(file) {
-  if (typeof navigator.share !== "function" || typeof navigator.canShare !== "function") {
-    return false;
-  }
+function supportsImageClipboard() {
+  return window.isSecureContext
+    && typeof ClipboardItem !== "undefined"
+    && !!navigator.clipboard
+    && typeof navigator.clipboard.write === "function";
+}
 
+function getStoryDataUrl() {
   try {
-    return navigator.canShare({ files: [file] });
+    return storyCanvas.toDataURL("image/png");
   } catch (error) {
-    return false;
+    return "";
   }
 }
 
-function canvasToBlob(canvas) {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-        return;
-      }
+function dataUrlToBlob(dataUrl) {
+  const [metadata, base64] = dataUrl.split(",");
+  const mimeMatch = metadata.match(/data:(.*?);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/png";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
 
-      reject(new Error("Canvas export failed."));
-    }, "image/png");
-  });
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new Blob([bytes], { type: mime });
 }
 
 function downloadBlob(blob, fileName) {
@@ -1342,13 +1329,13 @@ function downloadBlob(blob, fileName) {
   }, 1000);
 }
 
-function getDefaultStoryStatus() {
+function getDefaultShareStatus() {
   if (!window.isSecureContext) {
-    return "Story sharing needs HTTPS. This works on the live site, but local previews may only support saving.";
+    return "Saving and clipboard access need HTTPS. This works on the live site, but local previews may only support saving.";
   }
 
-  if (typeof navigator.share === "function") {
-    return "Use Share Story to open your phone's share sheet. If Instagram Story does not appear, save the image and add it from your gallery.";
+  if (supportsImageClipboard()) {
+    return "Tap Copy Image if your browser supports it. If Instagram Story does not accept paste, use Save Image and add it from your gallery.";
   }
 
   return getSaveFallbackMessage();

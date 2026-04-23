@@ -231,29 +231,53 @@
       </footer>
     </section>
   </main>
-  <section id="storyModal" class="story-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="storyModalTitle">
-    <div class="story-modal__backdrop" data-close-story></div>
-    <div class="story-modal__sheet">
-      <div class="story-modal__header">
-        <button class="story-modal__close" type="button" data-close-story>Close</button>
-        <h2 id="storyModalTitle">Share Activity</h2>
-        <div class="story-modal__spacer" aria-hidden="true"></div>
+  <main id="shareApp" class="share-app" hidden>
+    <section class="share-screen" aria-labelledby="shareTitle">
+      <div class="share-screen__spacer" aria-hidden="true"></div>
+      <div class="share-screen__stats">
+        <article class="share-stat">
+          <p class="share-stat__label">PAGE(S)</p>
+          <strong id="sharePagesValue" class="share-stat__value share-stat__value--pages">0</strong>
+        </article>
+        <article class="share-stat">
+          <p class="share-stat__label">PACE</p>
+          <div class="share-stat__row">
+            <strong id="sharePaceValue" class="share-stat__value share-stat__value--pace">00:00</strong>
+            <span class="share-stat__suffix">/p</span>
+          </div>
+        </article>
+        <article class="share-stat">
+          <p class="share-stat__label">TIME</p>
+          <strong id="shareTimeValue" class="share-stat__value share-stat__value--time">00:00</strong>
+        </article>
       </div>
-      <div class="story-modal__body">
-        <div class="story-preview">
-          <canvas id="storyCanvas" class="story-canvas" width="1080" height="1920" aria-label="Reading story preview"></canvas>
-        </div>
-        <div class="story-copy">
-          <p id="storyDetails" class="story-details">Create a poster you can save or share from your phone.</p>
-          <p id="storyStatus" class="story-status">Use Share Story to open your phone's share sheet. If Instagram Story does not appear, save the image and add it from your gallery.</p>
-        </div>
-        <div class="story-actions">
-          <button id="shareStoryButton" class="button button--solid" type="button">Share Story</button>
-          <button id="saveStoryButton" class="button button--ghost" type="button">Save Image</button>
-        </div>
+
+      <div class="share-screen__icon" aria-hidden="true">
+        <svg class="share-bookmark" viewBox="0 0 208 168" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40 57C31 41 22 28 8 30L12 115C39 107 72 112 102 126C99 113 92 97 83 84" />
+          <path d="M168 57C177 41 186 28 200 30L196 115C169 107 136 112 106 126C109 113 116 97 125 84" />
+          <path d="M96 126C103 147 105 147 112 126" />
+          <path d="M20 38L58 101" />
+          <path d="M188 38L150 101" />
+          <path d="M35 132C55 116 75 113 95 123" />
+          <path d="M173 132C153 116 133 113 113 123" />
+        </svg>
       </div>
-    </div>
-  </section>
+
+      <div class="share-screen__help">
+        <p id="shareTitle" class="share-screen__help-title">How to share</p>
+        <p id="shareHowTo" class="share-screen__help-copy">Save image -> Open Instagram Story -> Add from gallery</p>
+        <p id="shareStatus" class="share-screen__status">Preparing your reading card.</p>
+      </div>
+
+      <div class="share-screen__actions">
+        <button id="sharePrimaryButton" class="button share-screen__primary" type="button">Copy Image</button>
+        <button id="shareSecondaryButton" class="share-screen__secondary" type="button">New Session</button>
+      </div>
+
+      <canvas id="storyCanvas" class="story-canvas story-canvas--hidden" width="1080" height="1920" aria-hidden="true"></canvas>
+    </section>
+  </main>
   <noscript>
     <p class="noscript-banner">Reading Strava works best with JavaScript enabled because sessions and stats are calculated in your browser.</p>
   </noscript>
