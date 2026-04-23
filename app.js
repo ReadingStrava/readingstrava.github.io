@@ -127,7 +127,6 @@ function attachEvents() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    installStatus.textContent = "Install Reading Strava to open straight into the recorder.";
   });
 
   window.addEventListener("appinstalled", () => {
